@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audi 90 2.6L Stroker — Teensy 4.1 ECU Interface</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --panel: #0f1318;
+    --border: #1e2530;
+    --accent: #00e5ff;
+    --accent2: #ff6b00;
+    --accent3: #39ff14;
+    --warn: #ffd600;
+    --text: #c8d8e8;
+    --dim: #4a5568;
+    --red: #ff3d3d;
+    --purple: #b44fff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Barlow Condensed', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(90deg, #0f1318 0%, #111820 100%);
+  }
+
+  .logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #fff;
+    line-height: 1;
+  }
+
+  h1 span { color: var(--accent); }
+
+  .subtitle {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 32px;
+    background: #080a0d;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    padding: 14px 24px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    user-select: none;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .content { display: none; padding: 32px; }
+  .content.active { display: block; }
+
+  /* ── SCHEMATIC ── */
+  .schematic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    position: relative;
+  }
+
+  .block::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .block.blue::before { background: var(--accent); }
+  .block.orange::before { background: var(--accent2); }
+  .block.green::before { background: var(--accent3); }
+  .block.yellow::before { background: var(--warn); }
+  .block.purple::before { background: var(--purple); }
+  .block.red::before { background: var(--red); }
+
+  .block-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .block.blue .block-title { color: var(--accent); }
+  .block.orange .block-title { color: var(--accent2); }
+  .block.green .block-title { color: var(--accent3); }
+  .block.yellow .block-title { color: var(--warn); }
+  .block.purple .block-title { color: var(--purple); }
+  .block.red .block-title { color: var(--red); }
+
+  .pin-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #151a22;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .pin-row:last-child { border-bottom: none; }
+
+  .pin-num {
+    background: #151a22;
+    color: var(--dim);
+    padding: 2px 6px;
+    border-radius: 2px;
+    min-width: 28px;
+    text-align: center;
+    font-size: 10px;
+  }
+
+  .pin-name { color: var(--text); flex: 1; padding: 0 10px; }
+  .pin-dest { color: var(--dim); font-size: 10px; text-align: right; }
+
+  .wire-blue { color: var(--accent) !important; }
+  .wire-orange { color: var(--accent2) !important; }
+  .wire-green { color: var(--accent3) !important; }
+  .wire-yellow { color: var(--warn) !important; }
+  .wire-purple { color: var(--purple) !important; }
+  .wire-red { color: var(--red) !important; }
+
+  /* SVG Schematic */
+  .svg-container {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+  }
+
+  svg text { font-family: 'Share Tech Mono', monospace; }
+
+  /* Power section */
+  .power-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .note-box {
+    background: #0d1117;
+    border: 1px solid #ffd60033;
+    border-left: 3px solid var(--warn);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #b0b8c8;
+  }
+
+  .note-box strong { color: var(--warn); }
+
+  /* Parts list */
+  .parts-section { margin-bottom: 32px; }
+
+  .parts-section h2 {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead tr {
+    background: #080a0d;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+  }
+
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #151a22;
+    vertical-align: top;
+    line-height: 1.5;
+  }
+
+  tr:hover td { background: #0f1318; }
+
+  .part-ref {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .part-name { color: #fff; font-weight: 600; }
+  .part-spec { color: var(--text); font-size: 12px; }
+  .part-note { color: var(--dim); font-size: 11px; font-style: italic; }
+
+  .qty {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent2);
+    text-align: center;
+  }
+
+  .price {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--accent3);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .total-row td {
+    border-top: 2px solid var(--border);
+    border-bottom: none;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+  }
+
+  .cat-header td {
+    background: #080a0d;
+    color: var(--accent2);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 8px 12px;
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Flow diagram */
+  .flow-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow-x: auto;
+    padding: 24px 0;
+  }
+
+  .flow-node {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 14px 18px;
+    min-width: 130px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .flow-node .fn-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .flow-node .fn-detail {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    line-height: 1.6;
+  }
+
+  .flow-arrow {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .flow-arrow .fa-line {
+    width: 40px;
+    height: 1px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .flow-arrow .fa-line::after {
+    content: '▶';
+    position: absolute;
+    right: -6px;
+    top: -7px;
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  .flow-arrow .fa-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    color: var(--dim);
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  .fn-blue { border-top: 2px solid var(--accent); }
+  .fn-blue .fn-title { color: var(--accent); }
+  .fn-orange { border-top: 2px solid var(--accent2); }
+  .fn-orange .fn-title { color: var(--accent2); }
+  .fn-green { border-top: 2px solid var(--accent3); }
+  .fn-green .fn-title { color: var(--accent3); }
+  .fn-yellow { border-top: 2px solid var(--warn); }
+  .fn-yellow .fn-title { color: var(--warn); }
+  .fn-purple { border-top: 2px solid var(--purple); }
+  .fn-purple .fn-title { color: var(--purple); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .badge-warn { background: #ffd60022; color: var(--warn); border: 1px solid #ffd60044; }
+  .badge-ok { background: #39ff1422; color: var(--accent3); border: 1px solid #39ff1444; }
+  .badge-critical { background: #ff3d3d22; color: var(--red); border: 1px solid #ff3d3d44; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">ECU Interface Project // Rev 0.1</div>
+    <h1>AUDI 90 2.6L STROKER <span>//</span> TEENSY 4.1</h1>
+    <div class="subtitle">443 906 022 HITACHI ECU — PARALLEL BUS EMULATION + SENSOR EXPANSION</div>
+  </div>
+  <div style="text-align:right">
+    <div class="logo">7A/NF BLOCK // AAF CRANK // CCTA RODS</div>
+    <div style="font-size:13px;color:var(--dim);margin-top:4px;">2.3 → 2.6L // 95.6mm STROKE</div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('schematic')">Wiring Schematic</div>
+  <div class="tab" onclick="showTab('power')">Power Regulation</div>
+  <div class="tab" onclick="showTab('signals')">Signal Intercepts</div>
+  <div class="tab" onclick="showTab('parts')">Parts List</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SCHEMATIC TAB -->
+<div id="tab-schematic" class="content active">
+
+  <!-- Block diagram SVG -->
+  <div class="svg-container">
+    <svg width="1100" height="420" viewBox="0 0 1100 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-blue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#00e5ff"/>
+        </marker>
+        <marker id="arr-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#ff6b00"/>
+        </marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#39ff14"/>
+        </marker>
+        <marker id="arr-yellow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#ffd600"/>
+        </marker>
+        <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#b44fff"/>
+        </marker>
+        <marker id="arr-dim" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#4a5568"/>
+        </marker>
+      </defs>
+
+      <!-- HITACHI ECU -->
+      <rect x="10" y="120" width="160" height="180" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="10" y="120" width="160" height="3" fill="#ff6b00"/>
+      <text x="90" y="142" fill="#ff6b00" font-size="9" letter-spacing="2" text-anchor="middle">HITACHI ECU</text>
+      <text x="90" y="157" fill="#4a5568" font-size="8" text-anchor="middle">443 906 022</text>
+      <text x="90" y="175" fill="#c8d8e8" font-size="8" text-anchor="middle">28-PIN EPROM SOCKET</text>
+      <text x="90" y="192" fill="#4a5568" font-size="8" text-anchor="middle">5V PARALLEL BUS</text>
+      <text x="90" y="212" fill="#c8d8e8" font-size="8" text-anchor="middle">INJECTOR SIGNALS</text>
+      <text x="90" y="229" fill="#4a5568" font-size="8" text-anchor="middle">4x inline intercept</text>
+      <text x="90" y="249" fill="#c8d8e8" font-size="8" text-anchor="middle">MAF SIGNAL IN</text>
+      <text x="90" y="266" fill="#4a5568" font-size="8" text-anchor="middle">modified by Teensy</text>
+      <text x="90" y="286" fill="#c8d8e8" font-size="8" text-anchor="middle">RPM / COIL TRIGGER</text>
+
+      <!-- Arrow ECU → Level Shift -->
+      <line x1="170" y1="200" x2="210" y2="200" stroke="#00e5ff" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+      <text x="188" y="193" fill="#00e5ff" font-size="8" text-anchor="middle">28-PIN</text>
+      <text x="188" y="204" fill="#00e5ff" font-size="8" text-anchor="middle">5V BUS</text>
+
+      <!-- LEVEL SHIFTERS -->
+      <rect x="214" y="150" width="120" height="100" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="214" y="150" width="120" height="3" fill="#00e5ff"/>
+      <text x="274" y="172" fill="#00e5ff" font-size="9" letter-spacing="2" text-anchor="middle">LEVEL SHIFT</text>
+      <text x="274" y="187" fill="#c8d8e8" font-size="8" text-anchor="middle">74HCT245 × 3</text>
+      <text x="274" y="204" fill="#4a5568" font-size="8" text-anchor="middle">5V ↔ 3.3V</text>
+      <text x="274" y="221" fill="#c8d8e8" font-size="8" text-anchor="middle">D0–D7 · A0–A16</text>
+      <text x="274" y="237" fill="#4a5568" font-size="8" text-anchor="middle">/OE · /CE · /WE</text>
+
+      <!-- Arrow Level Shift → Teensy -->
+      <line x1="334" y1="200" x2="384" y2="200" stroke="#00e5ff" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+      <text x="357" y="193" fill="#00e5ff" font-size="8" text-anchor="middle">3.3V</text>
+      <text x="357" y="204" fill="#00e5ff" font-size="8" text-anchor="middle">BUS</text>
+
+      <!-- TEENSY 4.1 — central -->
+      <rect x="388" y="60" width="200" height="300" rx="4" fill="#0d1117" stroke="#00e5ff" stroke-width="1.5"/>
+      <rect x="388" y="60" width="200" height="4" fill="#00e5ff"/>
+      <text x="488" y="84" fill="#00e5ff" font-size="10" letter-spacing="3" font-weight="bold" text-anchor="middle">TEENSY 4.1</text>
+      <text x="488" y="99" fill="#4a5568" font-size="8" text-anchor="middle">600MHz ARM M7 · 1MB RAM · FlexIO</text>
+
+      <!-- Teensy pin groups -->
+      <text x="408" y="122" fill="#39ff14" font-size="8">FlexIO → EPROM emulation</text>
+      <text x="408" y="137" fill="#4a5568" font-size="8">A0–A16, D0–D7, /OE, /CE</text>
+
+      <text x="408" y="158" fill="#ffd600" font-size="8">ADC0 → Wideband 0–5V</text>
+      <text x="408" y="173" fill="#ffd600" font-size="8">ADC1 → MAP sensor 0–5V</text>
+      <text x="408" y="188" fill="#ffd600" font-size="8">ADC2 → Knock sensor</text>
+      <text x="408" y="203" fill="#ffd600" font-size="8">ADC3 → TPS signal</text>
+      <text x="408" y="218" fill="#ffd600" font-size="8">ADC4 → IAT sensor</text>
+
+      <text x="408" y="239" fill="#b44fff" font-size="8">CAN1 → OBD2 port</text>
+      <text x="408" y="254" fill="#b44fff" font-size="8">CAN2 → Gauge / display</text>
+      <text x="408" y="269" fill="#b44fff" font-size="8">CAN3 → future ABS</text>
+
+      <text x="408" y="290" fill="#ff6b00" font-size="8">D2–D5 → Injector trim</text>
+      <text x="408" y="305" fill="#ff6b00" font-size="8">D6 → MAF signal out</text>
+      <text x="408" y="320" fill="#ff6b00" font-size="8">D7 → RPM input</text>
+
+      <text x="408" y="342" fill="#4a5568" font-size="8">USB HS → laptop tuning</text>
+      <text x="408" y="355" fill="#4a5568" font-size="8">SD card → datalog</text>
+
+      <!-- SENSORS block right side -->
+      <rect x="660" y="40" width="160" height="200" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="660" y="40" width="160" height="3" fill="#ffd600"/>
+      <text x="740" y="60" fill="#ffd600" font-size="9" letter-spacing="2" text-anchor="middle">SENSORS</text>
+      <text x="740" y="78" fill="#c8d8e8" font-size="8" text-anchor="middle">AEM 30-0300 Wideband</text>
+      <text x="740" y="93" fill="#4a5568" font-size="8" text-anchor="middle">LSU 4.9 · 0-5V out</text>
+      <text x="740" y="113" fill="#c8d8e8" font-size="8" text-anchor="middle">GM 3-bar MAP</text>
+      <text x="740" y="128" fill="#4a5568" font-size="8" text-anchor="middle">12592525 · 0-5V</text>
+      <text x="740" y="148" fill="#c8d8e8" font-size="8" text-anchor="middle">Bosch Knock Sensor</text>
+      <text x="740" y="163" fill="#4a5568" font-size="8" text-anchor="middle">0261231006 · AC sig</text>
+      <text x="740" y="183" fill="#c8d8e8" font-size="8" text-anchor="middle">TPS · IAT</text>
+      <text x="740" y="198" fill="#4a5568" font-size="8" text-anchor="middle">tee off existing signals</text>
+      <text x="740" y="225" fill="#ffd600" font-size="8" text-anchor="middle">voltage divider on all 5V inputs</text>
+
+      <!-- Sensor arrows to Teensy -->
+      <line x1="660" y1="130" x2="590" y2="180" stroke="#ffd600" stroke-width="1" marker-end="url(#arr-yellow)"/>
+
+      <!-- OUTPUTS block -->
+      <rect x="660" y="260" width="160" height="160" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="660" y="260" width="160" height="3" fill="#b44fff"/>
+      <text x="740" y="280" fill="#b44fff" font-size="9" letter-spacing="2" text-anchor="middle">OUTPUTS</text>
+      <text x="740" y="298" fill="#c8d8e8" font-size="8" text-anchor="middle">OBD2 CAN port</text>
+      <text x="740" y="313" fill="#4a5568" font-size="8" text-anchor="middle">TCAN1051 transceiver</text>
+      <text x="740" y="333" fill="#c8d8e8" font-size="8" text-anchor="middle">Wideband gauge</text>
+      <text x="740" y="348" fill="#4a5568" font-size="8" text-anchor="middle">CAN or analog out</text>
+      <text x="740" y="368" fill="#c8d8e8" font-size="8" text-anchor="middle">USB to laptop</text>
+      <text x="740" y="383" fill="#4a5568" font-size="8" text-anchor="middle">live map editor</text>
+      <text x="740" y="403" fill="#c8d8e8" font-size="8" text-anchor="middle">SD datalog</text>
+
+      <!-- Output arrows from Teensy -->
+      <line x1="588" y1="260" x2="658" y2="310" stroke="#b44fff" stroke-width="1" marker-end="url(#arr-purple)"/>
+
+      <!-- POWER block -->
+      <rect x="870" y="100" width="210" height="220" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="870" y="100" width="210" height="3" fill="#39ff14"/>
+      <text x="975" y="120" fill="#39ff14" font-size="9" letter-spacing="2" text-anchor="middle">POWER REGULATION</text>
+      <text x="975" y="138" fill="#c8d8e8" font-size="8" text-anchor="middle">12V battery switched</text>
+      <line x1="940" y1="148" x2="1010" y2="148" stroke="#1e2530"/>
+      <text x="975" y="163" fill="#c8d8e8" font-size="8" text-anchor="middle">LM2596 → 5V 3A</text>
+      <text x="975" y="178" fill="#4a5568" font-size="8" text-anchor="middle">for level shifters + sensors</text>
+      <line x1="940" y1="188" x2="1010" y2="188" stroke="#1e2530"/>
+      <text x="975" y="203" fill="#c8d8e8" font-size="8" text-anchor="middle">LDO AMS1117 → 3.3V</text>
+      <text x="975" y="218" fill="#4a5568" font-size="8" text-anchor="middle">backup for Teensy Vin</text>
+      <line x1="940" y1="228" x2="1010" y2="228" stroke="#1e2530"/>
+      <text x="975" y="243" fill="#c8d8e8" font-size="8" text-anchor="middle">100µF + 0.1µF bypass</text>
+      <text x="975" y="258" fill="#4a5568" font-size="8" text-anchor="middle">on every supply rail</text>
+      <line x1="940" y1="268" x2="1010" y2="268" stroke="#1e2530"/>
+      <text x="975" y="283" fill="#39ff14" font-size="8" text-anchor="middle">TVS diode on 12V input</text>
+      <text x="975" y="298" fill="#4a5568" font-size="8" text-anchor="middle">P6KE15A — spike protection</text>
+
+      <!-- Power arrow to Teensy -->
+      <line x1="870" y1="210" x2="590" y2="210" stroke="#39ff14" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arr-green)"/>
+      <text x="730" y="206" fill="#39ff14" font-size="8" text-anchor="middle">5V / 3.3V REGULATED</text>
+
+      <!-- INJECTORS inline -->
+      <rect x="214" y="290" width="120" height="80" rx="3" fill="#0f1318" stroke="#1e2530"/>
+      <rect x="214" y="290" width="120" height="3" fill="#ff6b00"/>
+      <text x="274" y="310" fill="#ff6b00" font-size="9" letter-spacing="1" text-anchor="middle">INJ INTERCEPT</text>
+      <text x="274" y="327" fill="#c8d8e8" font-size="8" text-anchor="middle">IRLZ44N MOSFETs</text>
+      <text x="274" y="342" fill="#4a5568" font-size="8" text-anchor="middle">inline on inj. signal</text>
+      <text x="274" y="357" fill="#c8d8e8" font-size="8" text-anchor="middle">pulse width trim ±30%</text>
+
+      <line x1="388" y1="300" x2="334" y2="330" stroke="#ff6b00" stroke-width="1" marker-end="url(#arr-orange)"/>
+      <line x1="214" y1="330" x2="170" y2="220" stroke="#ff6b00" stroke-width="1" marker-end="url(#arr-orange)"/>
+
+    </svg>
+  </div>
+
+  <!-- Pin detail blocks -->
+  <div class="schematic-grid">
+
+    <!-- EPROM BUS -->
+    <div class="block blue">
+      <div class="block-title">EPROM Parallel Bus → Teensy FlexIO</div>
+      <div class="pin-row">
+        <span class="pin-num">D0–D7</span>
+        <span class="pin-name">Data bus (8-bit)</span>
+        <span class="pin-dest wire-blue">T4.1 pins 2–9</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">A0–A7</span>
+        <span class="pin-name">Address low byte</span>
+        <span class="pin-dest wire-blue">T4.1 pins 10–17</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">A8–A15</span>
+        <span class="pin-name">Address high byte</span>
+        <span class="pin-dest wire-blue">T4.1 pins 18–25</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">A16</span>
+        <span class="pin-name">Address MSB</span>
+        <span class="pin-dest wire-blue">T4.1 pin 26</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">/OE</span>
+        <span class="pin-name">Output enable</span>
+        <span class="pin-dest wire-blue">T4.1 pin 27</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">/CE</span>
+        <span class="pin-name">Chip enable</span>
+        <span class="pin-dest wire-blue">T4.1 pin 28</span>
+      </div>
+      <div class="note-box" style="margin-top:10px;font-size:11px;">
+        <strong>NOTE:</strong> All lines pass through 74HCT245 level shifters. Direction pin (DIR) tied HIGH for ECU→Teensy on address lines, bidirectional logic needed on data lines.
+      </div>
+    </div>
+
+    <!-- SENSOR INPUTS -->
+    <div class="block yellow">
+      <div class="block-title">Sensor Inputs → Teensy ADC</div>
+      <div class="pin-row">
+        <span class="pin-num">ADC0</span>
+        <span class="pin-name">Wideband O2 (0–5V)</span>
+        <span class="pin-dest wire-yellow">Pin A0 + 10k/20k div</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">ADC1</span>
+        <span class="pin-name">MAP sensor (0–5V)</span>
+        <span class="pin-dest wire-yellow">Pin A1 + 10k/20k div</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">ADC2</span>
+        <span class="pin-name">Knock sensor (AC)</span>
+        <span class="pin-dest wire-yellow">Pin A2 + filter circuit</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">ADC3</span>
+        <span class="pin-name">TPS (tee off)</span>
+        <span class="pin-dest wire-yellow">Pin A3 + 10k/20k div</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">ADC4</span>
+        <span class="pin-name">IAT sensor</span>
+        <span class="pin-dest wire-yellow">Pin A4 + 10k/20k div</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">DIG</span>
+        <span class="pin-name">RPM / coil trigger</span>
+        <span class="pin-dest wire-yellow">Pin 30 interrupt</span>
+      </div>
+      <div class="note-box" style="margin-top:10px;font-size:11px;">
+        <strong>NOTE:</strong> Teensy ADC is 3.3V max. All 5V sensor signals need a voltage divider (10kΩ + 20kΩ to GND). Knock signal needs AC coupling cap + half-wave bias.
+      </div>
+    </div>
+
+    <!-- OUTPUTS -->
+    <div class="block purple">
+      <div class="block-title">Signal Outputs / Intercepts</div>
+      <div class="pin-row">
+        <span class="pin-num">D2</span>
+        <span class="pin-name">Injector 1 gate</span>
+        <span class="pin-dest wire-purple">IRLZ44N gate</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">D3</span>
+        <span class="pin-name">Injector 2 gate</span>
+        <span class="pin-dest wire-purple">IRLZ44N gate</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">D4</span>
+        <span class="pin-name">Injector 3 gate</span>
+        <span class="pin-dest wire-purple">IRLZ44N gate</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">D5</span>
+        <span class="pin-name">Injector 4 gate</span>
+        <span class="pin-dest wire-purple">IRLZ44N gate</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">D6</span>
+        <span class="pin-name">MAF signal synthetic</span>
+        <span class="pin-dest wire-purple">RC filter → ECU pin</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">CAN1</span>
+        <span class="pin-name">OBD2 CAN H/L</span>
+        <span class="pin-dest wire-purple">TCAN1051 transceiver</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-num">USB</span>
+        <span class="pin-name">Live tune / log</span>
+        <span class="pin-dest wire-purple">USB-C to laptop</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ POWER TAB -->
+<div id="tab-power" class="content">
+  <div class="power-grid">
+    <div class="block green">
+      <div class="block-title">12V Input Stage</div>
+      <div class="pin-row">
+        <span class="pin-name">Source</span>
+        <span class="pin-dest wire-green">Switched 12V (IGN)</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Spike protection</span>
+        <span class="pin-dest wire-green">P6KE15A TVS diode</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Reverse polarity</span>
+        <span class="pin-dest wire-green">1N5822 Schottky diode</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Bulk cap</span>
+        <span class="pin-dest wire-green">470µF 25V electrolytic</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Fuse</span>
+        <span class="pin-dest wire-green">3A blade fuse inline</span>
+      </div>
+    </div>
+
+    <div class="block green">
+      <div class="block-title">5V Rail — LM2596 Buck</div>
+      <div class="pin-row">
+        <span class="pin-name">Regulator</span>
+        <span class="pin-dest wire-green">LM2596-5.0 (fixed)</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Input cap</span>
+        <span class="pin-dest wire-green">100µF 25V</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Output cap</span>
+        <span class="pin-dest wire-green">220µF 10V low-ESR</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Inductor</span>
+        <span class="pin-dest wire-green">68µH (LM2596 datasheet)</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Catch diode</span>
+        <span class="pin-dest wire-green">1N5822 Schottky 3A</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Load</span>
+        <span class="pin-dest wire-green">74HCT245 × 3, sensors</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Bypass</span>
+        <span class="pin-dest wire-green">0.1µF ceramic per IC</span>
+      </div>
+    </div>
+
+    <div class="block green">
+      <div class="block-title">3.3V Rail — AMS1117 LDO</div>
+      <div class="pin-row">
+        <span class="pin-name">Input</span>
+        <span class="pin-dest wire-green">5V rail (from LM2596)</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Regulator</span>
+        <span class="pin-dest wire-green">AMS1117-3.3 SOT-223</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Input cap</span>
+        <span class="pin-dest wire-green">10µF tantalum</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Output cap</span>
+        <span class="pin-dest wire-green">10µF tantalum</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Note</span>
+        <span class="pin-dest wire-green">Teensy has own reg</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Bypass</span>
+        <span class="pin-dest wire-green">0.1µF per logic IC</span>
+      </div>
+    </div>
+
+    <div class="block yellow">
+      <div class="block-title">Grounding Strategy</div>
+      <div class="pin-row">
+        <span class="pin-name">Signal GND</span>
+        <span class="pin-dest wire-yellow">Single point at ECU GND</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Power GND</span>
+        <span class="pin-dest wire-yellow">Battery negative direct</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Sensor GND</span>
+        <span class="pin-dest wire-yellow">Tied to signal GND</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Wideband GND</span>
+        <span class="pin-dest wire-yellow">Dedicated — avoid loops</span>
+      </div>
+      <div class="pin-row">
+        <span class="pin-name">Knock shield</span>
+        <span class="pin-dest wire-yellow">GND at one end only</span>
+      </div>
+      <div class="note-box">
+        <strong>CRITICAL:</strong> Do NOT connect wideband controller ground to engine block. Run a dedicated ground wire to battery negative to avoid noise on the O2 signal.
+      </div>
+    </div>
+  </div>
+
+  <div class="note-box">
+    <strong>Power budget estimate:</strong> Teensy 4.1 at full load ~250mA @ 3.3V · 74HCT245 × 3 ~150mA @ 5V · Sensors ~100mA · MOSFET gates ~50mA · Total ≈ 550mA @ 5V. LM2596 rated 3A — comfortable margin. Automotive 12V can spike to 16V+ during load dump — TVS diode is not optional.
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ SIGNALS TAB -->
+<div id="tab-signals" class="content">
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:13px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border);">Signal Intercept Points</h2>
+
+    <div class="schematic-grid">
+      <div class="block orange">
+        <div class="block-title">Injector Signal Intercept</div>
+        <div style="font-size:12px;line-height:1.8;color:var(--text);">
+          ECU injector output wire is cut. ECU side connects to IRLZ44N drain. Source connects to injector. Teensy controls gate.<br><br>
+          When Teensy gate is HIGH, injector fires normally. Teensy can shorten or extend the pulse by controlling gate timing relative to ECU signal.<br><br>
+          <span style="color:var(--accent2);">Trim range: ~±30% pulse width</span><br>
+          <span style="color:var(--dim);font-size:11px;">A flyback diode (1N4007) across each injector is required.</span>
+        </div>
+      </div>
+
+      <div class="block yellow">
+        <div class="block-title">MAF Signal Synthesis</div>
+        <div style="font-size:12px;line-height:1.8;color:var(--text);">
+          The stock MAF outputs a frequency signal (not analog voltage) on most VAG units of this era. Teensy reads the original MAF frequency on an interrupt pin, applies a correction factor based on MAP + wideband data, and outputs a corrected frequency to the ECU.<br><br>
+          <span style="color:var(--warn);">This "lies" to the ECU about airflow</span>, effectively re-scaling the fueling for the larger 2.6L displacement.<br><br>
+          <span style="color:var(--dim);font-size:11px;">Confirm MAF signal type (freq vs voltage) before implementing.</span>
+        </div>
+      </div>
+
+      <div class="block blue">
+        <div class="block-title">EPROM Bus Intercept</div>
+        <div style="font-size:12px;line-height:1.8;color:var(--text);">
+          The original EPROM chip is removed from its socket. A ribbon cable connects the 28-pin socket to the level shifters, then to the Teensy FlexIO pins.<br><br>
+          Teensy responds to every address read with data from its internal flash — effectively acting as a faster, smarter EPROM.<br><br>
+          <span style="color:var(--accent);">Access time target: &lt;150ns</span> — easily achievable at 600MHz.<br><br>
+          <span style="color:var(--dim);font-size:11px;">Maps stored in Teensy flash can be updated over USB without opening ECU.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note-box" style="margin-top:8px;">
+      <strong>Knock sensor signal conditioning:</strong> The Bosch knock sensor outputs a small AC voltage centered around 0V. Teensy ADC cannot handle negative voltages. Add a 0.1µF coupling capacitor in series and a 100kΩ resistor to 1.65V (half of 3.3V using a voltage divider) to bias the signal into the safe 0–3.3V range. The Teensy's 600MHz M7 can then run FFT on this signal to isolate the knock frequency (~6–8kHz for these engines).
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ PARTS TAB -->
+<div id="tab-parts" class="content">
+
+  <div class="parts-section">
+    <h2>Complete Parts List</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Component</th>
+          <th>Spec / Part #</th>
+          <th style="text-align:center">Qty</th>
+          <th style="text-align:right">Est. USD</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr class="cat-header"><td colspan="5">── MICROCONTROLLER</td></tr>
+        <tr>
+          <td class="part-ref">U1</td>
+          <td><div class="part-name">Teensy 4.1</div><div class="part-note">PJRC — main controller</div></td>
+          <td class="part-spec">600MHz ARM Cortex-M7, 1MB RAM, built-in SD, USB HS</td>
+          <td class="qty">1</td>
+          <td class="price">$29.85</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── LEVEL SHIFTING</td></tr>
+        <tr>
+          <td class="part-ref">U2–U4</td>
+          <td><div class="part-name">74HCT245 Octal Bus Transceiver</div><div class="part-note">5V↔3.3V, parallel bus</div></td>
+          <td class="part-spec">DIP-20 or SOIC-20, 5V supply, 3.3V compatible inputs</td>
+          <td class="qty">3</td>
+          <td class="price">$1.20</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── SENSORS</td></tr>
+        <tr>
+          <td class="part-ref">S1</td>
+          <td><div class="part-name">AEM 30-0300 Wideband UEGO</div><div class="part-note">Controller + Bosch LSU 4.9 sensor</div></td>
+          <td class="part-spec">0–5V linear AFR output, includes bung for exhaust</td>
+          <td class="qty">1</td>
+          <td class="price">$189.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">S2</td>
+          <td><div class="part-name">GM 3-Bar MAP Sensor</div><div class="part-note">Part # 12592525 or 16040749</div></td>
+          <td class="part-spec">0–5V, 10–304 kPa, Delphi connector, cheap and universal</td>
+          <td class="qty">1</td>
+          <td class="price">$18.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">S3</td>
+          <td><div class="part-name">Bosch Knock Sensor</div><div class="part-note">0 261 231 006</div></td>
+          <td class="part-spec">Flat type, M8 thread, broadband piezo — may already be on block</td>
+          <td class="qty">1</td>
+          <td class="price">$22.00</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── INJECTOR INTERCEPT</td></tr>
+        <tr>
+          <td class="part-ref">Q1–Q4</td>
+          <td><div class="part-name">IRLZ44N Logic-Level MOSFET</div><div class="part-note">Injector pulse width control</div></td>
+          <td class="part-spec">N-ch, 55V 47A, Vgs(th) 1V — fully on at 3.3V gate</td>
+          <td class="qty">4</td>
+          <td class="price">$4.80</td>
+        </tr>
+        <tr>
+          <td class="part-ref">D1–D4</td>
+          <td><div class="part-name">1N4007 Flyback Diode</div><div class="part-note">Injector coil protection</div></td>
+          <td class="part-spec">1A 1000V — across each injector</td>
+          <td class="qty">4</td>
+          <td class="price">$0.40</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── CAN BUS</td></tr>
+        <tr>
+          <td class="part-ref">U5–U6</td>
+          <td><div class="part-name">TCAN1051 CAN Transceiver</div><div class="part-note">Texas Instruments</div></td>
+          <td class="part-spec">3.3V, 5Mbps CAN FD, automotive grade, SOIC-8</td>
+          <td class="qty">2</td>
+          <td class="price">$3.60</td>
+        </tr>
+        <tr>
+          <td class="part-ref">R1–R2</td>
+          <td><div class="part-name">120Ω CAN Termination Resistor</div></td>
+          <td class="part-spec">1/4W, one per CAN bus end</td>
+          <td class="qty">2</td>
+          <td class="price">$0.20</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── POWER REGULATION</td></tr>
+        <tr>
+          <td class="part-ref">U7</td>
+          <td><div class="part-name">LM2596-5.0 Buck Regulator</div><div class="part-note">Fixed 5V output</div></td>
+          <td class="part-spec">3A output, 12V input, TO-263 / D2PAK</td>
+          <td class="qty">1</td>
+          <td class="price">$1.50</td>
+        </tr>
+        <tr>
+          <td class="part-ref">U8</td>
+          <td><div class="part-name">AMS1117-3.3 LDO Regulator</div></td>
+          <td class="part-spec">1A, SOT-223, input from 5V rail</td>
+          <td class="qty">1</td>
+          <td class="price">$0.50</td>
+        </tr>
+        <tr>
+          <td class="part-ref">L1</td>
+          <td><div class="part-name">68µH Power Inductor</div><div class="part-note">For LM2596 buck circuit</div></td>
+          <td class="part-spec">3A rated, radial or SMD</td>
+          <td class="qty">1</td>
+          <td class="price">$1.20</td>
+        </tr>
+        <tr>
+          <td class="part-ref">D5</td>
+          <td><div class="part-name">1N5822 Schottky Diode 3A</div><div class="part-note">Buck catch diode + reverse polarity</div></td>
+          <td class="part-spec">40V 3A Schottky</td>
+          <td class="qty">2</td>
+          <td class="price">$0.60</td>
+        </tr>
+        <tr>
+          <td class="part-ref">D6</td>
+          <td><div class="part-name">P6KE15A TVS Diode</div><div class="part-note">12V input spike suppression</div></td>
+          <td class="part-spec">600W transient, 15V clamp — automotive essential</td>
+          <td class="qty">1</td>
+          <td class="price">$0.80</td>
+        </tr>
+
+        <tr class="cat-header"><td colspan="5">── PASSIVES / SUPPORTING</td></tr>
+        <tr>
+          <td class="part-ref">C1–C10</td>
+          <td><div class="part-name">Capacitor Assortment</div></td>
+          <td class="part-spec">100µF 25V electro, 10µF tantalum, 0.1µF ceramic (×10)</td>
+          <td class="qty">1 kit</td>
+          <td class="price">$5.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">R-KIT</td>
+          <td><div class="part-name">Resistor Assortment</div></td>
+          <td class="part-spec">10kΩ, 20kΩ, 100kΩ, 1kΩ (voltage dividers, pull-ups, bias)</td>
+          <td class="qty">1 kit</td>
+          <td class="price">$3.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">J1</td>
+          <td><div class="part-name">28-Pin DIP ZIF Socket</div><div class="part-note">EPROM socket replacement in ECU</div></td>
+          <td class="part-spec">Zero insertion force, fits TC537000P footprint</td>
+          <td class="qty">1</td>
+          <td class="price">$3.50</td>
+        </tr>
+        <tr>
+          <td class="part-ref">CABLE</td>
+          <td><div class="part-name">28-conductor Ribbon Cable</div></td>
+          <td class="part-spec">0.05" pitch IDC, ~30cm — ECU socket to level shifters</td>
+          <td class="qty">1</td>
+          <td class="price">$4.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">PCB</td>
+          <td><div class="part-name">Proto PCB or Custom PCB</div><div class="part-note">Recommend JLCPCB 2-layer</div></td>
+          <td class="part-spec">~80×60mm, fits level shifters + power stage + connectors</td>
+          <td class="qty">1</td>
+          <td class="price">$8.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">CONN</td>
+          <td><div class="part-name">Automotive Connectors / Housing</div></td>
+          <td class="part-spec">Deutsch DT series or Molex Mini-Fit Jr — weatherproof</td>
+          <td class="qty">1 kit</td>
+          <td class="price">$15.00</td>
+        </tr>
+        <tr>
+          <td class="part-ref">FUSE</td>
+          <td><div class="part-name">Inline Blade Fuse Holder + 3A Fuse</div></td>
+          <td class="part-spec">Waterproof, 12V — on power input wire</td>
+          <td class="qty">1</td>
+          <td class="price">$3.00</td>
+        </tr>
+
+        <tr class="total-row">
+          <td colspan="4">ESTIMATED TOTAL <span class="badge badge-ok">excl. wideband</span></td>
+          <td class="price">~$125</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4">ESTIMATED TOTAL <span class="badge badge-warn">incl. wideband</span></td>
+          <td class="price">~$315</td>
+        </tr>
+
+      </tbody>
+    </table>
+
+    <div class="note-box" style="margin-top:20px;">
+      <strong>Sourcing notes:</strong> Teensy 4.1 — buy direct from PJRC.com (supports the developer). AEM wideband — Amazon or Summit Racing. GM MAP sensor — RockAuto or eBay (OEM Delphi). 74HCT245 / TCAN1051 / LM2596 — Mouser, Digi-Key, or LCSC. IRLZ44N MOSFETs — Digi-Key or AliExpress in bulk. Connectors — Waytek Wire or Del City for proper automotive Deutsch connectors.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.target.classList.add('active');
+  }
+</script>
+
+</body>
+</html>

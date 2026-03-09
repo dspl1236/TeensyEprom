@@ -1,0 +1,54 @@
+7A Late ECU (893906266D) ROM Analysis
+Stock vs Turbo Stage 2 550cc 91oct
+=================================================================
+
+ROM size: 64KB (65536 bytes)
+Active space: lower 32KB (0x0000-0x7FFF), mirrored to 0x8000-0xFFFF
+Total changed bytes: 880
+Changed regions: 42
+
+Region 0x0000-0x00ff (256 bytes, 254 changed)
+Region 0x0108-0x010f (8 bytes, 8 changed)
+Region 0x0118-0x011f (8 bytes, 8 changed)
+Region 0x0128-0x012f (8 bytes, 8 changed)
+Region 0x0138-0x013f (8 bytes, 8 changed)
+Region 0x0148-0x014f (8 bytes, 8 changed)
+Region 0x0158-0x015f (8 bytes, 8 changed)
+Region 0x0168-0x016f (8 bytes, 8 changed)
+Region 0x0177-0x017f (9 bytes, 9 changed)
+Region 0x0187-0x018f (9 bytes, 9 changed)
+Region 0x0197-0x019f (9 bytes, 8 changed)
+Region 0x01a7-0x01af (9 bytes, 9 changed)
+Region 0x01b7-0x01bf (9 bytes, 9 changed)
+Region 0x01c7-0x01cf (9 bytes, 9 changed)
+Region 0x01d7-0x01df (9 bytes, 9 changed)
+Region 0x01e7-0x01ef (9 bytes, 9 changed)
+Region 0x01f7-0x01ff (9 bytes, 8 changed)
+Region 0x0255-0x025f (11 bytes, 10 changed)
+Region 0x02d1-0x034f (127 bytes, 97 changed)
+Region 0x0653-0x0677 (37 bytes, 32 changed)
+Region 0x077e-0x077e (1 bytes, 1 changed)
+Region 0x07e1-0x07e1 (1 bytes, 1 changed)
+Region 0x0e2f-0x0e3f (17 bytes, 14 changed)
+Region 0x0f13-0x0f25 (19 bytes, 15 changed)
+Region 0x1006-0x1007 (2 bytes, 2 changed)
+Region 0x1016-0x101f (10 bytes, 10 changed)
+Region 0x1026-0x102f (10 bytes, 10 changed)
+Region 0x1036-0x103f (10 bytes, 9 changed)
+Region 0x1047-0x104f (9 bytes, 9 changed)
+Region 0x1057-0x105f (9 bytes, 8 changed)
+Region 0x1066-0x106f (10 bytes, 10 changed)
+Region 0x1076-0x107f (10 bytes, 9 changed)
+Region 0x1086-0x108f (10 bytes, 10 changed)
+Region 0x1096-0x109f (10 bytes, 10 changed)
+Region 0x10a6-0x10af (10 bytes, 10 changed)
+Region 0x10b6-0x10bf (10 bytes, 9 changed)
+Region 0x10c6-0x10cf (10 bytes, 9 changed)
+Region 0x10d6-0x10df (10 bytes, 9 changed)
+Region 0x10e6-0x10ef (10 bytes, 8 changed)
+Region 0x10f6-0x10ff (10 bytes, 9 changed)
+Region 0x13f7-0x13fb (5 bytes, 5 changed)
+Region 0x1600-0x16ae (175 bytes, 175 changed)
+
+Next step: cross-reference with 7A_Late_Generic_1.01.ecu Java object
+to get exact table names at each address.
