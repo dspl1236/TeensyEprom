@@ -40,6 +40,7 @@ ECU_DESCRIPTIONS = {
 class HardwareConfigTab(QWidget):
     # Emitted when config changes — other tabs can react
     sig_config_changed = pyqtSignal(dict)
+    sig_flash_firmware  = pyqtSignal()   # request firmware flash dialog
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -355,6 +356,23 @@ class HardwareConfigTab(QWidget):
         root.addWidget(grp_maps)
         root.addWidget(grp_scale)
         root.addWidget(self.lbl_summary)
+
+        # ── Flash firmware button ─────────────────────────────────────────
+        flash_row = QHBoxLayout()
+        self.btn_flash_fw = QPushButton("⚡  Flash Firmware to Teensy")
+        self.btn_flash_fw.setStyleSheet(
+            "QPushButton { background:#0a0e14; color:#ffa040; "
+            "border:1px solid #ffa040; padding:6px 18px; font-size:11px; }"
+            "QPushButton:hover { background:#1a1000; color:#ffb860; border-color:#ffb860; }"
+        )
+        self.btn_flash_fw.setToolTip(
+            "Flash Teensy Full (wideband + live tuning) or Lite (map switcher) firmware via USB"
+        )
+        self.btn_flash_fw.clicked.connect(self.sig_flash_firmware.emit)
+        flash_row.addStretch()
+        flash_row.addWidget(self.btn_flash_fw)
+        root.addLayout(flash_row)
+
         root.addStretch()
 
     # ── Detection ─────────────────────────────────────────────────────────────

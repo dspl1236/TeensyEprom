@@ -5,17 +5,48 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:   # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build Teensy Full firmware
+        run: pio run -e teensy41
+        working-directory: firmware
+
+      - name: Build Teensy Lite firmware
+        run: pio run -c platformio_lite.ini -e teensy_lite
+        working-directory: firmware
+
+      - name: Collect hex files
+        run: |
+          mkdir -p firmware_out
+          cp firmware/.pio/build/teensy41/firmware.hex     firmware_out/teensy_full.hex
+          cp firmware/.pio/build/teensy_lite/firmware.hex  firmware_out/teensy_lite.hex
+          ls -lh firmware_out/
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-hex
+          path: firmware_out/
+          retention-days: 7
+
   build-windows:
     runs-on: windows-latest
-    
+    needs: build-firmware
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python 3.11
@@ -23,10 +54,29 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install PyQt5 pyserial matplotlib pyinstaller
+
+      - name: Download compiled firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-hex
+          path: tuner_app/firmware/
+
+      - name: Download teensy_loader_cli
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path tuner_app/tools
+          $url = "https://github.com/PaulStoffregen/teensy_loader_cli/releases/download/v2.2/teensy_loader_cli.exe"
+          Invoke-WebRequest -Uri $url -OutFile tuner_app/tools/teensy_loader_cli.exe
+          Write-Host "Size: $((Get-Item tuner_app/tools/teensy_loader_cli.exe).Length) bytes"
+
+      - name: Verify bundle contents
+        run: |
+          dir tuner_app\firmware\
+          dir tuner_app\tools\
 
       - name: Build EXE with PyInstaller
         working-directory: tuner_app
@@ -37,14 +87,14 @@ jobs:
             --name "Audi90Tuner" `
             --add-data "ui;ui" `
             --add-data "serial_comm;serial_comm" `
+            --add-data "firmware;firmware" `
+            --add-data "tools;tools" `
             main.py
 
-      - name: Verify EXE was created
-        run: |
-          dir tuner_app\dist\
-          echo "Build successful!"
+      - name: Verify EXE
+        run: dir tuner_app\dist\
 
-      - name: Upload EXE as artifact
+      - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: Audi90Tuner-Windows
@@ -54,14 +104,13 @@ jobs:
   create-release:
     needs: build-windows
     runs-on: ubuntu-latest
-    # Only create a release on pushes to main (not PRs)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download built EXE
+      - name: Download EXE
         uses: actions/download-artifact@v4
         with:
           name: Audi90Tuner-Windows
@@ -71,37 +120,51 @@ jobs:
         id: sha
         run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: Delete existing 'latest' release if present
+      - name: Delete existing latest release
         run: |
           gh release delete latest --yes || true
           git push origin :refs/tags/latest || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create rolling 'latest' release
+      - name: Create rolling latest release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: "Audi90 Tuner — Latest Build"
           body: |
-            ## Audi90 Tuner — Auto-built from latest commit
+            ## 7A 20v Tuner — Auto-built from latest commit
 
             **Commit:** `${{ steps.sha.outputs.short }}` — ${{ github.event.head_commit.message }}
 
-            ### How to use
-            1. Download `Audi90Tuner.exe` below
-            2. Plug in your Teensy 4.1 via USB
-            3. Run the exe — no install needed
-            4. Click **Auto-detect Teensy** or pick your COM port manually
-            5. Click **Connect**
+            ### Just download and run — no install needed
+            Everything is bundled in the exe:
+            - Teensy Full firmware (`teensy_full.hex`)
+            - Teensy Lite firmware (`teensy_lite.hex`)
+            - `teensy_loader_cli.exe` for one-click USB flashing
 
-            ### Requirements (on the car / Teensy side)
-            - `usb_tune.h` integrated into Teensy firmware (see `firmware/src/`)
-            - Teensy running and USB connected to laptop
-            - SD card with `stock.bin` and/or `tune.bin`
+            ### Three modes — detected automatically on Teensy connect
+
+            | Mode | Description | Tabs |
+            |---|---|---|
+            | **ROM Tool** | No Teensy required | ROM Tool, Console |
+            | **Teensy Full** | Wideband AFR + live tuning | Live Gauges, Map Editor, ROM Manager, Hardware, Datalog, Console |
+            | **Teensy Lite** | SD card map switcher | Map Switcher, ROM Tool, Console |
+
+            ### First time with a new Teensy
+            1. Run `Audi90Tuner.exe`
+            2. Connect Teensy 4.1 via USB
+            3. Click **Connect** — app detects firmware status automatically
+            4. If prompted, pick **Full** or **Lite** and click **Flash Now**
+            5. Teensy reboots, tabs reconfigure automatically
+
+            ### Teensy Lite wiring
+            - Button: pin 2, active LOW (short press = next map, hold 3s = previous)
+            - LED: pin 13 (onboard) — blinks = active map number
+            - SD: built-in Teensy 4.1 slot — name files `map1.bin` … `map8.bin`
 
             ---
-            *1990 Audi 90 2.6L Stroker — Teensy 4.1 EPROM emulator + closed-loop ECU*
+            *1990 Audi 90 2.6L Stroker — Teensy 4.1 ECU interface*
           files: dist/Audi90Tuner.exe
           draft: false
           prerelease: false
