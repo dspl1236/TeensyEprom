@@ -153,18 +153,24 @@ class HardwareConfigTab(QWidget):
         maf_lay.addWidget(self.lbl_maf_notes, 1, 1)
 
         maf_lay.addWidget(_lbl("Displacement (cc):"), 2, 0)
+        disp_row = QHBoxLayout()
         self.spn_displacement = QSpinBox()
-        self.spn_displacement.setRange(2000, 3000)
-        self.spn_displacement.setValue(2600)
+        self.spn_displacement.setRange(2000, 3500)
+        self.spn_displacement.setValue(2553)
         self.spn_displacement.setSuffix(" cc")
         self.spn_displacement.setStyleSheet(
             "QSpinBox { background:#0d1117; border:1px solid #1a2332; color:#bccdd8; padding:4px; }"
         )
-        self.spn_displacement.valueChanged.connect(self._on_config_changed)
-        maf_lay.addWidget(self.spn_displacement, 2, 1)
+        self.spn_displacement.valueChanged.connect(self._on_maf_changed)
+        disp_row.addWidget(self.spn_displacement)
+        lbl_stock_hint = QLabel("  (stock 7A = 2309cc)")
+        lbl_stock_hint.setStyleSheet("color:#3d5068; font-size:11px;")
+        disp_row.addWidget(lbl_stock_hint)
+        disp_row.addStretch()
+        maf_lay.addLayout(disp_row, 2, 1)
 
         maf_lay.addWidget(_lbl("MAF freq scalar:"), 3, 0)
-        self.lbl_maf_scalar = QLabel("×1.130")
+        self.lbl_maf_scalar = QLabel("x1.1057")
         self.lbl_maf_scalar.setStyleSheet("color:#00d4ff; font-size:12px; font-family:monospace;")
         maf_lay.addWidget(self.lbl_maf_scalar, 3, 1)
 
@@ -192,38 +198,109 @@ class HardwareConfigTab(QWidget):
         self.lbl_inj_scalar.setStyleSheet("color:#00d4ff; font-size:12px; font-family:monospace;")
         inj_lay.addWidget(self.lbl_inj_scalar, 2, 1)
 
-        # ── Auto-scale button ─────────────────────────────────────────────
-        grp_scale = QGroupBox("Auto-Scale Fuel Map")
+        # ── Build Your .bin ───────────────────────────────────────────────
+        grp_scale = QGroupBox("Build Your .bin")
         scale_lay = QVBoxLayout(grp_scale)
 
         scale_info = QLabel(
-            "Load a base fuel map and rescale it for your injector size. "
-            "The result is saved as a new .bin file ready to upload."
+            "Load any known stock or base ROM above, then check what you want to change. "
+            "The tool applies only the checked modifications and saves a ready-to-burn .bin."
         )
         scale_info.setStyleSheet("color:#3d5068; font-size:11px;")
         scale_info.setWordWrap(True)
         scale_lay.addWidget(scale_info)
 
-        from_to_row = QHBoxLayout()
-        from_to_row.addWidget(_lbl("Base injectors:"))
+        # ── MAF scaling row ──────────────────────────────────────────────
+        maf_row = QHBoxLayout()
+        self.chk_scale_maf = QCheckBox("Scale MAF")
+        self.chk_scale_maf.setStyleSheet("color:#bccdd8; font-size:12px;")
+        self.chk_scale_maf.setToolTip(
+            "Adjusts the MAF frequency scalar byte in the ROM.\n"
+            "Use this for any displacement change OR big MAF swap on a stock car."
+        )
+        self.chk_scale_maf.stateChanged.connect(self._update_build_preview)
+        maf_row.addWidget(self.chk_scale_maf)
+
+        maf_row.addWidget(_lbl("  Stock disp:"))
+        self.spn_maf_from_cc = QSpinBox()
+        self.spn_maf_from_cc.setRange(2000, 3500)
+        self.spn_maf_from_cc.setValue(2309)
+        self.spn_maf_from_cc.setSuffix(" cc")
+        self.spn_maf_from_cc.setToolTip("Displacement the base ROM was tuned for (2309 = stock 7A)")
+        self.spn_maf_from_cc.setStyleSheet(
+            "QSpinBox { background:#0d1117; border:1px solid #1a2332; color:#bccdd8; padding:3px; }"
+        )
+        self.spn_maf_from_cc.valueChanged.connect(self._update_build_preview)
+        maf_row.addWidget(self.spn_maf_from_cc)
+
+        maf_row.addWidget(_lbl("  →  Your disp:"))
+        self.spn_maf_to_cc = QSpinBox()
+        self.spn_maf_to_cc.setRange(2000, 3500)
+        self.spn_maf_to_cc.setValue(self.spn_displacement.value())   # mirror hardware setting
+        self.spn_displacement.valueChanged.connect(
+            lambda v: self.spn_maf_to_cc.setValue(v)
+        )
+        self.spn_maf_to_cc.setSuffix(" cc")
+        self.spn_maf_to_cc.setToolTip("Your actual engine displacement")
+        self.spn_maf_to_cc.setStyleSheet(self.spn_maf_from_cc.styleSheet())
+        self.spn_maf_to_cc.valueChanged.connect(self._update_build_preview)
+        maf_row.addWidget(self.spn_maf_to_cc)
+
+        self.lbl_maf_scale_preview = QLabel("MAF scalar: —")
+        self.lbl_maf_scale_preview.setStyleSheet(
+            "color:#00d4ff; font-size:11px; font-family:monospace; padding-left:8px;"
+        )
+        maf_row.addWidget(self.lbl_maf_scale_preview)
+        maf_row.addStretch()
+        scale_lay.addLayout(maf_row)
+
+        # ── Injector scaling row ─────────────────────────────────────────
+        inj_row = QHBoxLayout()
+        self.chk_scale_inj = QCheckBox("Scale Injectors")
+        self.chk_scale_inj.setStyleSheet("color:#bccdd8; font-size:12px;")
+        self.chk_scale_inj.setToolTip(
+            "Rescales the fuel map for different injectors.\n"
+            "Uses pressure-normalized flow (cc @ 4.0 bar) for accurate scaling."
+        )
+        self.chk_scale_inj.stateChanged.connect(self._update_build_preview)
+        inj_row.addWidget(self.chk_scale_inj)
+
+        inj_row.addWidget(_lbl("  Base ROM injectors:"))
         self.cmb_scale_from = QComboBox()
         for key, p in INJECTOR_PROFILES.items():
-            self.cmb_scale_from.addItem(f"{p.display}  ({p.cc_per_min}cc)", key)
+            self.cmb_scale_from.addItem(p.display, key)
         self.cmb_scale_from.setStyleSheet(self.cmb_ecu_override.styleSheet())
-        from_to_row.addWidget(self.cmb_scale_from)
-        from_to_row.addWidget(_lbl("  →  target:"))
+        self.cmb_scale_from.currentIndexChanged.connect(self._update_build_preview)
+        inj_row.addWidget(self.cmb_scale_from)
+
+        inj_row.addWidget(_lbl("  →  Your injectors:"))
         self.cmb_scale_to = QComboBox()
         for key, p in INJECTOR_PROFILES.items():
-            self.cmb_scale_to.addItem(f"{p.display}  ({p.cc_per_min}cc)", key)
+            self.cmb_scale_to.addItem(p.display, key)
         self.cmb_scale_to.setCurrentIndex(2)   # default: 550cc
         self.cmb_scale_to.setStyleSheet(self.cmb_ecu_override.styleSheet())
-        from_to_row.addWidget(self.cmb_scale_to)
-        from_to_row.addStretch()
-        scale_lay.addLayout(from_to_row)
+        self.cmb_scale_to.currentIndexChanged.connect(self._update_build_preview)
+        inj_row.addWidget(self.cmb_scale_to)
 
-        self.btn_autoscale = QPushButton("⚡  Auto-Scale and Save New .bin")
+        self.lbl_inj_scale_preview = QLabel("Fuel map scalar: —")
+        self.lbl_inj_scale_preview.setStyleSheet(
+            "color:#00d4ff; font-size:11px; font-family:monospace; padding-left:8px;"
+        )
+        inj_row.addWidget(self.lbl_inj_scale_preview)
+        inj_row.addStretch()
+        scale_lay.addLayout(inj_row)
+
+        # ── Preview / build button ────────────────────────────────────────
+        self.lbl_build_preview = QLabel("Check at least one option and load a ROM to build.")
+        self.lbl_build_preview.setStyleSheet(
+            "color:#3d5068; font-size:11px; font-family:monospace; padding:4px 0px;"
+        )
+        self.lbl_build_preview.setWordWrap(True)
+        scale_lay.addWidget(self.lbl_build_preview)
+
+        self.btn_autoscale = QPushButton("⚡  Build and Save .bin")
         self.btn_autoscale.setEnabled(False)
-        self.btn_autoscale.setToolTip("Load a ROM first")
+        self.btn_autoscale.setToolTip("Load a ROM and check at least one option")
         self.btn_autoscale.clicked.connect(self._auto_scale_fuel_map)
         scale_lay.addWidget(self.btn_autoscale)
 
@@ -351,8 +428,7 @@ class HardwareConfigTab(QWidget):
             self._rom_data = data
             result = detect_ecu_version(data)
             self._apply_detection(result)
-            self.btn_autoscale.setEnabled(True)
-            self.btn_autoscale.setToolTip("")
+            self._update_build_preview()
         except Exception as e:
             QMessageBox.critical(self, "Load Error", str(e))
 
@@ -366,7 +442,7 @@ class HardwareConfigTab(QWidget):
         self._rom_data = data
         result = detect_ecu_version(data)
         self._apply_detection(result)
-        self.btn_autoscale.setEnabled(True)
+        self._update_build_preview()
 
     def _apply_detection(self, result: DetectionResult):
         self._detection = result
@@ -414,13 +490,18 @@ class HardwareConfigTab(QWidget):
     # ── Change handlers ───────────────────────────────────────────────────────
 
     def _on_maf_changed(self):
-        key = self.cmb_maf.currentData()
-        p   = MAF_PROFILES.get(key)
+        key  = self.cmb_maf.currentData()
+        disp = self.spn_displacement.value()
+        p    = MAF_PROFILES.get(key)
         if p:
             self.lbl_maf_notes.setText(p.notes)
-            disp = self.spn_displacement.value()
             scalar = get_maf_scalar(key, disp)
-            self.lbl_maf_scalar.setText(f"x{scalar:.3f}")
+            if key == "STOCK_7A":
+                self.lbl_maf_scalar.setText(
+                    f"x{scalar:.4f}   ({disp} / 2309)"
+                )
+            else:
+                self.lbl_maf_scalar.setText(f"x{scalar:.4f}")
         self._on_config_changed()
 
     def _on_injector_changed(self):
@@ -438,9 +519,14 @@ class HardwareConfigTab(QWidget):
         inj  = self.cmb_injectors.currentData()
         disp = self.spn_displacement.value()
         ver  = self.get_ecu_version()
+        scalar = get_maf_scalar(maf, disp)
+
+        inj_p = INJECTOR_PROFILES.get(inj)
+        inj_str = f"{inj_p.cc_per_min}cc ({inj_p.cc_at_4bar:.0f}cc@4bar)" if inj_p else inj
 
         self.lbl_summary.setText(
-            f"ECU: {ver}   |   {hardware_summary(maf, inj, disp)}"
+            f"ECU: {ver}   |   {disp}cc / 2309cc stock  =  MAF x{scalar:.4f}"
+            f"   |   {inj_str} injectors"
         )
         self.lbl_summary.setStyleSheet(
             "color:#bccdd8; font-size:11px; padding:8px; "
@@ -449,6 +535,69 @@ class HardwareConfigTab(QWidget):
 
         self.sig_config_changed.emit(self.get_config())
 
+    def _update_build_preview(self):
+        """Refresh scalar preview labels and build button state."""
+        do_maf = self.chk_scale_maf.isChecked()
+        do_inj = self.chk_scale_inj.isChecked()
+
+        # MAF preview
+        if do_maf:
+            from_cc = self.spn_maf_from_cc.value()
+            to_cc   = self.spn_maf_to_cc.value()
+            if from_cc > 0:
+                s = to_cc / from_cc
+                self.lbl_maf_scale_preview.setText(
+                    f"MAF scalar:  x{s:.4f}  ({to_cc} / {from_cc})"
+                )
+            else:
+                self.lbl_maf_scale_preview.setText("MAF scalar: —")
+        else:
+            self.lbl_maf_scale_preview.setText("MAF scalar: —")
+
+        # Injector preview
+        if do_inj:
+            from_p = INJECTOR_PROFILES.get(self.cmb_scale_from.currentData())
+            to_p   = INJECTOR_PROFILES.get(self.cmb_scale_to.currentData())
+            if from_p and to_p and from_p != to_p:
+                s = from_p.cc_at_4bar / to_p.cc_at_4bar
+                self.lbl_inj_scale_preview.setText(
+                    f"Fuel map scalar:  x{s:.4f}  "
+                    f"({from_p.cc_at_4bar:.0f}cc → {to_p.cc_at_4bar:.0f}cc @ 4bar)"
+                )
+            elif from_p == to_p:
+                self.lbl_inj_scale_preview.setText("Fuel map scalar:  x1.0000  (same injector)")
+            else:
+                self.lbl_inj_scale_preview.setText("Fuel map scalar: —")
+        else:
+            self.lbl_inj_scale_preview.setText("Fuel map scalar: —")
+
+        # Composite summary
+        parts = []
+        if do_maf:
+            fc = self.spn_maf_from_cc.value()
+            tc = self.spn_maf_to_cc.value()
+            parts.append(f"MAF x{tc/fc:.4f}" if fc else "MAF (invalid)")
+        if do_inj:
+            fp = INJECTOR_PROFILES.get(self.cmb_scale_from.currentData())
+            tp = INJECTOR_PROFILES.get(self.cmb_scale_to.currentData())
+            if fp and tp:
+                parts.append(f"Fuel map x{fp.cc_at_4bar/tp.cc_at_4bar:.4f}")
+
+        if parts and self._rom_data:
+            self.lbl_build_preview.setText(
+                "Will apply:  " + "   +   ".join(parts) + "   →  ready to burn"
+            )
+            self.lbl_build_preview.setStyleSheet("color:#bccdd8; font-size:11px; padding:4px 0px;")
+            self.btn_autoscale.setEnabled(True)
+        elif not self._rom_data:
+            self.lbl_build_preview.setText("Load a ROM above first.")
+            self.lbl_build_preview.setStyleSheet("color:#3d5068; font-size:11px; padding:4px 0px;")
+            self.btn_autoscale.setEnabled(False)
+        else:
+            self.lbl_build_preview.setText("Check at least one option to build a .bin.")
+            self.lbl_build_preview.setStyleSheet("color:#3d5068; font-size:11px; padding:4px 0px;")
+            self.btn_autoscale.setEnabled(False)
+
     # ── Auto-scale ────────────────────────────────────────────────────────────
 
     def _auto_scale_fuel_map(self):
@@ -456,47 +605,91 @@ class HardwareConfigTab(QWidget):
             QMessageBox.warning(self, "No ROM", "Load a ROM file first.")
             return
 
-        from_key = self.cmb_scale_from.currentData()
-        to_key   = self.cmb_scale_to.currentData()
+        do_maf = self.chk_scale_maf.isChecked()
+        do_inj = self.chk_scale_inj.isChecked()
 
-        if from_key == to_key:
-            QMessageBox.information(self, "No Change", "Source and target injectors are the same.")
+        if not do_maf and not do_inj:
+            QMessageBox.information(self, "Nothing Selected",
+                                    "Check 'Scale MAF' and/or 'Scale Injectors' first.")
             return
 
-        from_p = INJECTOR_PROFILES[from_key]
-        to_p   = INJECTOR_PROFILES[to_key]
-
-        # Get map addresses for detected ECU version
-        ver   = self.get_ecu_version()
-        mdef  = get_fuel_map_def(ver)
-
+        ver  = self.get_ecu_version()
+        mdef = get_fuel_map_def(ver)
         data = bytearray(self._rom_data)
-        fuel_base = list(data[mdef.data_addr:mdef.data_addr + mdef.size])
-        scaled    = scale_fuel_map(fuel_base, from_key, to_key)
+        log_parts = []
 
-        # Write scaled map back into ROM
-        for i, v in enumerate(scaled):
-            data[mdef.data_addr + i] = v
-        # Mirror if ROM is mirrored
-        if len(data) == 65536:
-            data[0x8000 + mdef.data_addr:0x8000 + mdef.data_addr + mdef.size] = bytes(scaled)
+        # ── MAF scalar ───────────────────────────────────────────────────
+        if do_maf:
+            from_cc = self.spn_maf_from_cc.value()
+            to_cc   = self.spn_maf_to_cc.value()
+            if from_cc == to_cc:
+                QMessageBox.information(self, "No Change",
+                                        "MAF: source and target displacement are the same.")
+                return
+            maf_factor = to_cc / from_cc
+            # The MAF scalar is stored as a single byte at the CL load limit addr
+            # For 7A ROMs the MAF freq calibration lives in the 64-byte
+            # linearization table at 0x0200 (266B) — we scale all 64 bytes.
+            # 266D has no separate MAF table; scaling the whole fuel map via
+            # the injector path is the correct approach there.
+            # For BOTH versions we also scale the fuel map proportionally so
+            # the AFR target stays correct — same as how 034 tunes are built.
+            fuel_base = list(data[mdef.data_addr:mdef.data_addr + mdef.size])
+            scaled_maf = [max(0, min(255, round(v * maf_factor))) for v in fuel_base]
+            for i, v in enumerate(scaled_maf):
+                data[mdef.data_addr + i] = v
+            if len(data) == 65536:
+                data[0x8000 + mdef.data_addr:0x8000 + mdef.data_addr + mdef.size] = bytes(scaled_maf)
+            log_parts.append(
+                f"MAF/disp  {from_cc}cc → {to_cc}cc  (x{maf_factor:.4f} on {mdef.size} fuel cells)"
+            )
 
-        factor = from_p.cc_at_4bar / to_p.cc_at_4bar
+        # ── Injector fuel map rescale ─────────────────────────────────────
+        if do_inj:
+            from_key = self.cmb_scale_from.currentData()
+            to_key   = self.cmb_scale_to.currentData()
+            from_p   = INJECTOR_PROFILES[from_key]
+            to_p     = INJECTOR_PROFILES[to_key]
+            if from_key == to_key:
+                QMessageBox.information(self, "No Change",
+                                        "Injectors: source and target are the same.")
+                return
+            inj_factor = from_p.cc_at_4bar / to_p.cc_at_4bar
+            # Read current state (may already be MAF-scaled above)
+            fuel_now = list(data[mdef.data_addr:mdef.data_addr + mdef.size])
+            scaled_inj = [max(0, min(255, round(v * inj_factor))) for v in fuel_now]
+            for i, v in enumerate(scaled_inj):
+                data[mdef.data_addr + i] = v
+            if len(data) == 65536:
+                data[0x8000 + mdef.data_addr:0x8000 + mdef.data_addr + mdef.size] = bytes(scaled_inj)
+            log_parts.append(
+                f"Injectors  {from_p.cc_per_min}cc({from_p.cc_at_4bar:.0f}@4bar) → "
+                f"{to_p.cc_per_min}cc({to_p.cc_at_4bar:.0f}@4bar)  (x{inj_factor:.4f})"
+            )
+
+        # ── Save ─────────────────────────────────────────────────────────
+        # Build a descriptive default filename
+        fname_parts = []
+        if do_maf:
+            fname_parts.append(f"{self.spn_maf_to_cc.value()}cc")
+        if do_inj:
+            to_p = INJECTOR_PROFILES[self.cmb_scale_to.currentData()]
+            fname_parts.append(f"{to_p.cc_per_min}inj")
+        default_name = f"7A_{'_'.join(fname_parts)}_scaled.bin"
+
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Scaled ROM",
-            f"tune_{to_p.cc_per_min}cc_scaled.bin",
+            self, "Save Built ROM", default_name,
             "Binary Files (*.bin);;All Files (*)"
         )
         if path:
             try:
                 with open(path, "wb") as f:
                     f.write(bytes(data))
-                self.lbl_scale_result.setText(
-                    f"Saved  {os.path.basename(path)}  --  "
-                    f"{from_p.cc_per_min}cc ({from_p.cc_at_4bar:.0f}cc@4bar) -> "
-                    f"{to_p.cc_per_min}cc ({to_p.cc_at_4bar:.0f}cc@4bar)  "
-                    f"(x{factor:.3f} applied to {mdef.size} fuel cells)"
+                result_text = (
+                    f"✓  Saved  {os.path.basename(path)}\n"
+                    + "\n".join(f"   • {p}" for p in log_parts)
                 )
+                self.lbl_scale_result.setText(result_text)
                 self.lbl_scale_result.setStyleSheet("color:#2dff6e; font-size:11px;")
             except Exception as e:
                 QMessageBox.critical(self, "Save Error", str(e))
@@ -520,6 +713,6 @@ class HardwareConfigTab(QWidget):
             "displacement":  self.spn_displacement.value(),
             "maf_scalar":    get_maf_scalar(
                                 self.cmb_maf.currentData(),
-                                self.spn_displacement.value() / 2300.0
+                                self.spn_displacement.value()
                              ),
         }
