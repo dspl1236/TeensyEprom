@@ -30,11 +30,14 @@ jobs:
 
       - name: Collect hex files
         run: |
-          echo "=== Finding all hex files ==="
-          find . -name "firmware.hex" 2>/dev/null
           mkdir -p firmware_out
-          cp firmware/.pio/build/teensy41/firmware.hex     firmware_out/teensy_full.hex
-          cp firmware/.pio/build/teensy_lite/firmware.hex  firmware_out/teensy_lite.hex
+          find . -name "firmware.hex" | sort
+          FULL=$(find . -path "*/teensy41/firmware.hex" | head -1)
+          LITE=$(find . -path "*/teensy_lite/firmware.hex" | head -1)
+          echo "Full: $FULL"
+          echo "Lite: $LITE"
+          cp "$FULL" firmware_out/teensy_full.hex
+          cp "$LITE" firmware_out/teensy_lite.hex
           ls -lh firmware_out/
 
       - name: Upload firmware artifacts
