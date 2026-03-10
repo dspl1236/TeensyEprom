@@ -1,0 +1,106 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:   # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyQt5 pyserial matplotlib pyinstaller
+
+      - name: Build EXE with PyInstaller
+        working-directory: tuner_app
+        run: |
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --name "Audi90Tuner" `
+            --add-data "ui;ui" `
+            --add-data "serial_comm;serial_comm" `
+            main.py
+
+      - name: Verify EXE was created
+        run: |
+          dir tuner_app\dist\
+          echo "Build successful!"
+
+      - name: Upload EXE as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Audi90Tuner-Windows
+          path: tuner_app/dist/Audi90Tuner.exe
+          retention-days: 90
+
+  create-release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+    # Only create a release on pushes to main (not PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download built EXE
+        uses: actions/download-artifact@v4
+        with:
+          name: Audi90Tuner-Windows
+          path: dist/
+
+      - name: Get short commit SHA
+        id: sha
+        run: echo "short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Delete existing 'latest' release if present
+        run: |
+          gh release delete latest --yes || true
+          git push origin :refs/tags/latest || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create rolling 'latest' release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: "Audi90 Tuner — Latest Build"
+          body: |
+            ## Audi90 Tuner — Auto-built from latest commit
+
+            **Commit:** `${{ steps.sha.outputs.short }}` — ${{ github.event.head_commit.message }}
+
+            ### How to use
+            1. Download `Audi90Tuner.exe` below
+            2. Plug in your Teensy 4.1 via USB
+            3. Run the exe — no install needed
+            4. Click **Auto-detect Teensy** or pick your COM port manually
+            5. Click **Connect**
+
+            ### Requirements (on the car / Teensy side)
+            - `usb_tune.h` integrated into Teensy firmware (see `firmware/src/`)
+            - Teensy running and USB connected to laptop
+            - SD card with `stock.bin` and/or `tune.bin`
+
+            ---
+            *1990 Audi 90 2.6L Stroker — Teensy 4.1 EPROM emulator + closed-loop ECU*
+          files: dist/Audi90Tuner.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
