@@ -31,9 +31,12 @@ jobs:
       - name: Collect hex files
         run: |
           mkdir -p firmware_out
-          find . -name "firmware.hex" | sort
-          FULL=$(find . -path "*/teensy41/firmware.hex" | head -1)
-          LITE=$(find . -path "*/teensy_lite/firmware.hex" | head -1)
+          echo "=== All hex files found ==="
+          find . -name "*.hex" | sort
+          echo "=== teensy41 build dir ==="
+          ls firmware/.pio/build/teensy41/ 2>/dev/null || echo "DIR NOT FOUND"
+          FULL=$(find . -path "*/teensy41/*.hex" | head -1)
+          LITE=$(find . -path "*/teensy_lite/*.hex" | head -1)
           echo "Full: $FULL"
           echo "Lite: $LITE"
           cp "$FULL" firmware_out/teensy_full.hex
