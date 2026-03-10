@@ -21,6 +21,8 @@ jobs:
         run: pip install platformio
 
       - name: Build Teensy Full firmware
+        env:
+          PLATFORMIO_BUILD_DIR: ${{ github.workspace }}/firmware/.pio/build
         run: pio run -e teensy41
         working-directory: firmware
 
