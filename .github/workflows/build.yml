@@ -78,8 +78,23 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path tuner_app/tools
           $url = "https://github.com/PaulStoffregen/teensy_loader_cli/releases/download/v2.2/teensy_loader_cli.exe"
-          Invoke-WebRequest -Uri $url -OutFile tuner_app/tools/teensy_loader_cli.exe
-          Write-Host "Size: $((Get-Item tuner_app/tools/teensy_loader_cli.exe).Length) bytes"
+          $maxRetry = 3
+          for ($i = 1; $i -le $maxRetry; $i++) {
+            try {
+              Invoke-WebRequest -Uri $url -OutFile tuner_app/tools/teensy_loader_cli.exe -UseBasicParsing -MaximumRedirection 5 -Headers @{ "User-Agent" = "Mozilla/5.0" }
+              $size = (Get-Item tuner_app/tools/teensy_loader_cli.exe).Length
+              Write-Host "Size: $size bytes"
+              if ($size -gt 10000) { break }
+              Write-Host "File too small (HTML response?), retrying..."
+            } catch {
+              Write-Host "Attempt $i failed: $_"
+              Start-Sleep -Seconds 5
+            }
+          }
+          if ((Get-Item tuner_app/tools/teensy_loader_cli.exe).Length -lt 10000) {
+            Write-Error "teensy_loader_cli.exe download failed (got HTML or tiny file)"
+            exit 1
+          }
 
       - name: Verify bundle contents
         run: |
