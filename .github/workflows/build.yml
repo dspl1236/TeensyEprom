@@ -21,21 +21,27 @@ jobs:
         run: pip install platformio
 
       - name: Build Teensy Full firmware
-        env:
-          PLATFORMIO_BUILD_DIR: ${{ github.workspace }}/firmware/.pio/build
-        run: pio run -e teensy41
+        run: |
+          pio run -e teensy41
+          mkdir -p ${{ github.workspace }}/firmware_out
+          find $HOME -name "firmware.hex" -path "*/teensy41/*" 2>/dev/null | head -1 | xargs -I{} cp {} ${{ github.workspace }}/firmware_out/teensy_full.hex || true
+          find . -name "firmware.hex" -path "*/teensy41/*" 2>/dev/null | head -1 | xargs -I{} cp {} ${{ github.workspace }}/firmware_out/teensy_full.hex || true
+          ls -la ${{ github.workspace }}/firmware_out/ 2>/dev/null || echo "firmware_out empty"
         working-directory: firmware
 
       - name: Build Teensy Lite firmware
-        run: pio run -c platformio_lite.ini -e teensy_lite
+        run: |
+          pio run -c platformio_lite.ini -e teensy_lite
+          find . -name "firmware.hex" -path "*/teensy_lite/*" 2>/dev/null | head -1 | xargs -I{} cp {} ${{ github.workspace }}/firmware_out/teensy_lite.hex || true
         working-directory: firmware
 
       - name: Collect hex files
         run: |
-          mkdir -p firmware_out
-          cp firmware/.pio/build/teensy41/firmware.hex  firmware_out/teensy_full.hex
-          cp firmware/.pio/build/teensy_lite/firmware.hex firmware_out/teensy_lite.hex
-          ls -lh firmware_out/
+          echo "=== firmware_out contents ==="
+          ls -lh firmware_out/ || echo "firmware_out missing"
+          [ -f firmware_out/teensy_full.hex ] || (echo "ERROR: teensy_full.hex missing"; exit 1)
+          [ -f firmware_out/teensy_lite.hex ] || (echo "ERROR: teensy_lite.hex missing"; exit 1)
+          echo "Both hex files present"
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
