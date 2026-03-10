@@ -429,7 +429,7 @@ class HardwareConfigTab(QWidget):
         if p:
             self.lbl_inj_notes.setText(p.notes)
             self.lbl_inj_scalar.setText(
-                f"x{p.scalar_from_stock:.3f}  ({'no change' if p.cc_per_min == 225 else 'rescale fuel map'})"
+                f"x{p.scalar_from_stock:.3f}  ({'no change' if key == 'STOCK_7A' else f'{p.cc_at_4bar:.0f}cc @ 4bar  rescale fuel map'})"
             )
         self._on_config_changed()
 
@@ -481,7 +481,7 @@ class HardwareConfigTab(QWidget):
         if len(data) == 65536:
             data[0x8000 + mdef.data_addr:0x8000 + mdef.data_addr + mdef.size] = bytes(scaled)
 
-        factor = from_p.cc_per_min / to_p.cc_per_min
+        factor = from_p.cc_at_4bar / to_p.cc_at_4bar
         path, _ = QFileDialog.getSaveFileName(
             self, "Save Scaled ROM",
             f"tune_{to_p.cc_per_min}cc_scaled.bin",
@@ -493,7 +493,8 @@ class HardwareConfigTab(QWidget):
                     f.write(bytes(data))
                 self.lbl_scale_result.setText(
                     f"Saved  {os.path.basename(path)}  --  "
-                    f"{from_p.cc_per_min}cc -> {to_p.cc_per_min}cc  "
+                    f"{from_p.cc_per_min}cc ({from_p.cc_at_4bar:.0f}cc@4bar) -> "
+                    f"{to_p.cc_per_min}cc ({to_p.cc_at_4bar:.0f}cc@4bar)  "
                     f"(x{factor:.3f} applied to {mdef.size} fuel cells)"
                 )
                 self.lbl_scale_result.setStyleSheet("color:#2dff6e; font-size:11px;")

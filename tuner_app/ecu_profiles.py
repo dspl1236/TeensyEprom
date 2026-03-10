@@ -335,34 +335,63 @@ MAF_PROFILES: Dict[str, MAFProfile] = {
 
 @dataclass
 class InjectorProfile:
-    name:       str
-    display:    str
-    cc_per_min: int
-    notes:      str = ""
+    name:         str
+    display:      str
+    cc_per_min:   int       # rated flow at rated_bar
+    rated_bar:    float     # test pressure the cc rating is given at
+    part_number:  str = ""
+    notes:        str = ""
+
+    @property
+    def cc_at_4bar(self) -> float:
+        """Flow normalized to 4.0 bar (stock 7A fuel pressure)."""
+        import math
+        return round(self.cc_per_min * math.sqrt(4.0 / self.rated_bar), 1)
 
     @property
     def scalar_from_stock(self) -> float:
-        """Fuel map multiplier relative to stock 225cc injectors."""
-        return round(225.0 / self.cc_per_min, 4)
+        """
+        Fuel map multiplier to rescale from stock 7A injectors to this injector.
+        Pressure-normalized at 4.0 bar (stock 7A rail pressure).
+        scalar = stock_cc_at_4bar / this_cc_at_4bar
+        """
+        stock_cc = 302.0  # Stock 7A @ 4.0 bar (already at reference pressure)
+        return round(stock_cc / self.cc_at_4bar, 4)
+
+    def scalar_from(self, other: "InjectorProfile") -> float:
+        """Fuel map multiplier to rescale from other injector to self."""
+        return round(other.cc_at_4bar / self.cc_at_4bar, 4)
+
+
+# Pressure normalization:
+#   Stock 7A: Bosch 0 280 150 715  302cc @ 4.0 bar  (already at reference)
+#   440cc @ 3.0 bar  -> 440 x sqrt(4.0/3.0) = 508.4cc @ 4.0 bar
+#   550cc @ 3.0 bar  -> 550 x sqrt(4.0/3.0) = 635.1cc @ 4.0 bar
+#   Scale stock->440:  302 / 508.4 = 0.594
+#   Scale stock->550:  302 / 635.1 = 0.476
 
 INJECTOR_PROFILES: Dict[str, InjectorProfile] = {
-    "STOCK_225": InjectorProfile(
-        name="STOCK_225",
-        display="Stock 225cc",
-        cc_per_min=225,
-        notes="Factory 7A injectors"
+    "STOCK_7A": InjectorProfile(
+        name="STOCK_7A",
+        display="Stock 7A  (302cc @ 4.0 bar)",
+        cc_per_min=302,
+        rated_bar=4.0,
+        part_number="Bosch 0 280 150 715",
+        notes="Factory 7A injector. 302cc rated @ 4.0 bar. Reference pressure for all scaling."
     ),
     "CC440": InjectorProfile(
         name="CC440",
-        display="440cc",
+        display="440cc  (@ 3.0 bar)",
         cc_per_min=440,
-        notes="Common 440cc upgrade  (e.g. Bosch green top)"
+        rated_bar=3.0,
+        notes="440cc @ 3.0 bar = 508cc @ 4.0 bar.  Fuel map scale vs stock: x0.594"
     ),
     "CC550": InjectorProfile(
         name="CC550",
-        display="550cc",
+        display="550cc  (@ 3.0 bar)",
         cc_per_min=550,
-        notes="034 Stage 2 550cc -- matches 034 turbo tune calibrations"
+        rated_bar=3.0,
+        notes="034 Stage 2.  550cc @ 3.0 bar = 635cc @ 4.0 bar.  Fuel map scale vs stock: x0.476"
     ),
 }
 
@@ -373,14 +402,15 @@ INJECTOR_PROFILES: Dict[str, InjectorProfile] = {
 
 def scale_fuel_map(base_map: list, from_injector: str, to_injector: str) -> list:
     """
-    Rescale a fuel map from one injector size to another.
-    Each value is multiplied by src_cc/dst_cc and clamped to 0-255.
+    Rescale a fuel map from one injector to another.
+    Uses pressure-normalized flow (cc @ 4.0 bar) for both injectors.
+    factor = from_cc_at_4bar / to_cc_at_4bar
     """
     src = INJECTOR_PROFILES.get(from_injector)
     dst = INJECTOR_PROFILES.get(to_injector)
-    if not src or not dst or src.cc_per_min == dst.cc_per_min:
+    if not src or not dst or from_injector == to_injector:
         return list(base_map)
-    factor = src.cc_per_min / dst.cc_per_min
+    factor = src.cc_at_4bar / dst.cc_at_4bar
     return [max(0, min(255, round(v * factor))) for v in base_map]
 
 
@@ -424,15 +454,15 @@ class KnownROM:
 
 KNOWN_ROM_LIBRARY: List[KnownROM] = [
     # 266B -- Early 2-connector ECU
-    KnownROM("034 - 893906266B Stock",                             "266B", "Stock",   "STOCK_7A", "STOCK_225", "OEM stock"),
-    KnownROM("034 - 893906266B - NA Big MAF 91Oct R2",             "266B", "NA",      "BIG_MAF",  "STOCK_225", "NA Big MAF 91oct"),
-    KnownROM("034 - 893906266B - Stage 1 91Oct R1",                "266B", "Stage1",  "STOCK_7A", "STOCK_225", "Stage 1 NA"),
-    KnownROM("034 - 893906266B - Stage 1 91 Octane Turbo",         "266B", "TurboS1", "STOCK_7A", "STOCK_225", "Turbo Stage 1"),
+    KnownROM("034 - 893906266B Stock",                             "266B", "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock"),
+    KnownROM("034 - 893906266B - NA Big MAF 91Oct R2",             "266B", "NA",      "BIG_MAF",  "STOCK_7A", "NA Big MAF 91oct"),
+    KnownROM("034 - 893906266B - Stage 1 91Oct R1",                "266B", "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA"),
+    KnownROM("034 - 893906266B - Stage 1 91 Octane Turbo",         "266B", "TurboS1", "STOCK_7A", "STOCK_7A", "Turbo Stage 1"),
     KnownROM("034 - 893906266B - Stage 2 91 Octane 550cc Turbo",   "266B", "TurboS2", "STOCK_7A", "CC550",     "Turbo Stage 2 550cc"),
     # 266D -- Late 4-connector ECU
-    KnownROM("034 - 893906266D Stock",                             "266D", "Stock",   "STOCK_7A", "STOCK_225", "OEM stock"),
+    KnownROM("034 - 893906266D Stock",                             "266D", "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock"),
     KnownROM("034 - 893906266D Turbo Stage 2 550cc",               "266D", "TurboS2", "STOCK_7A", "CC550",     "Turbo Stage 2 550cc"),
-    KnownROM("034 - 893906266D Big MAF 91Oct R1",                  "266D", "NA",      "BIG_MAF",  "STOCK_225", "NA Big MAF"),
-    KnownROM("034 - 893906266D Stage 1 91Oct R1",                  "266D", "Stage1",  "STOCK_7A", "STOCK_225", "Stage 1 NA"),
-    KnownROM("034 Turbo Kit Stage 1 91 R2 893906266B",             "266B", "TurboS1", "STOCK_7A", "STOCK_225", "Turbo Stage 1 R2"),
+    KnownROM("034 - 893906266D Big MAF 91Oct R1",                  "266D", "NA",      "BIG_MAF",  "STOCK_7A", "NA Big MAF"),
+    KnownROM("034 - 893906266D Stage 1 91Oct R1",                  "266D", "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA"),
+    KnownROM("034 Turbo Kit Stage 1 91 R2 893906266B",             "266B", "TurboS1", "STOCK_7A", "STOCK_7A", "Turbo Stage 1 R2"),
 ]
