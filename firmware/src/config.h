@@ -115,12 +115,28 @@
 
 // ---------------------------------------------------------------------------
 // MAF intercept — frequency signal synthesis
-// Teensy reads stock MAF frequency, applies displacement correction,
-// outputs corrected frequency to ECU
+// Phase 1: stock 7A hotwire (frequency in, corrected frequency out)
+// Phase 2: MK4 1.8T hot film (analog in, synthesised frequency out)
 // ---------------------------------------------------------------------------
-#define PIN_MAF_IN        20    // Stock MAF frequency input
-#define PIN_MAF_OUT       21    // Corrected frequency output to ECU
-#define MAF_DISPLACEMENT_FACTOR  1.124f  // 2.6L / 2.3L = 1.130, fine tune on dyno
+#define MAF_INPUT_FREQUENCY  0
+#define MAF_INPUT_ANALOG     1
+
+// *** SET THIS TO SWITCH PHASES ***
+#define MAF_INPUT_TYPE    MAF_INPUT_FREQUENCY   // Phase 1 (stock sensor)
+// #define MAF_INPUT_TYPE MAF_INPUT_ANALOG      // Phase 2 (MK4 1.8T sensor)
+
+#define PIN_MAF_IN        20    // Phase 1: freq input / Phase 2: analog ADC input
+#define PIN_MAF_OUT       21    // Synthesised frequency output to ECU
+
+// Phase 1 only: displacement correction factor
+// 2.6L stroker vs 2.3L stock = 2.609 / 2.309 = 1.130
+// Fine tune on dyno — start here
+#define MAF_DISPLACEMENT_FACTOR  1.130f
+
+// Phase 2 sensor: VW MK4 1.8T MAF — Bosch 0 280 218 037
+// 70mm bore, analog 0–5V, hot film, backflow immune, rated ~480 kg/h
+// Wiring: Pin 1 = GND, Pin 2 = 12V, Pin 3 = Signal (0–5V)
+// Signal through 10k/20k divider to Teensy ADC
 
 // ---------------------------------------------------------------------------
 // CAN bus — TJA1051 transceivers
