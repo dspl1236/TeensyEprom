@@ -13,6 +13,7 @@
 //                                20kΩ junction to GND  (gives 3.3V at Teensy)
 // =============================================================================
 #include "wideband.h"
+#include "config.h"
 
 static float   lastAFR       = 0.0f;
 static int     lastTemp_C    = 0;
