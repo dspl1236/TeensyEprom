@@ -29,12 +29,13 @@ jobs:
         working-directory: firmware
 
       - name: Collect hex files
-        working-directory: firmware
         run: |
-          mkdir -p ../firmware_out
-          cp .pio/build/teensy41/firmware.hex     ../firmware_out/teensy_full.hex
-          cp .pio/build/teensy_lite/firmware.hex  ../firmware_out/teensy_lite.hex
-          ls -lh ../firmware_out/
+          echo "=== Finding all hex files ==="
+          find . -name "firmware.hex" 2>/dev/null
+          mkdir -p firmware_out
+          cp firmware/.pio/build/teensy41/firmware.hex     firmware_out/teensy_full.hex
+          cp firmware/.pio/build/teensy_lite/firmware.hex  firmware_out/teensy_lite.hex
+          ls -lh firmware_out/
 
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
