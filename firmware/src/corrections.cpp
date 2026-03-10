@@ -20,6 +20,7 @@
 //   Load axis: 0–100% MAP in 16 steps  (6.25%/step)
 // =============================================================================
 #include "corrections.h"
+#include "config.h"
 #include "wideband.h"
 #include "sensors.h"
 

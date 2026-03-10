@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 // injectors.h — MOSFET injector intercept for pulse-width correction
 
 void  injectors_init();

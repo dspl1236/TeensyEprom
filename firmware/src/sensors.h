@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 // sensors.h — MAP, TPS, IAT, knock, RPM sensor readings
 
 void  sensors_init();

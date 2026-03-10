@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 // wideband.h — Spartan 3 Lite OEM UART wideband interface
 
 void  wideband_init();
