@@ -18,7 +18,8 @@ from PyQt5.QtGui import QColor, QFont
 from ecu_profiles import (
     detect_ecu_version, scale_fuel_map, get_maf_scalar,
     hardware_summary, MAF_PROFILES, INJECTOR_PROFILES,
-    DetectionResult
+    DetectionResult, ECU_MAPS, KNOWN_ROM_LIBRARY,
+    get_fuel_map_def, get_timing_map_def
 )
 
 
@@ -247,14 +248,97 @@ class HardwareConfigTab(QWidget):
         right_col.addWidget(grp_inj)
         top_row.addLayout(right_col, 1)
 
+        # ── Map Address Table ─────────────────────────────────────────────
+        grp_maps = QGroupBox("Map Addresses  (from detected ECU version)")
+        maps_lay = QVBoxLayout(grp_maps)
+
+        maps_hdr = QHBoxLayout()
+        self.lbl_map_version = QLabel("Load a ROM to see map addresses")
+        self.lbl_map_version.setStyleSheet("color:#3d5068; font-size:11px;")
+        maps_hdr.addWidget(self.lbl_map_version)
+        maps_hdr.addStretch()
+        self.btn_load_ecu_def = QPushButton("Load .ecu Definition")
+        self.btn_load_ecu_def.setToolTip("Load a 034 .ecu file for TunerStudio-compatible map labels")
+        self.btn_load_ecu_def.clicked.connect(self._load_ecu_definition)
+        maps_hdr.addWidget(self.btn_load_ecu_def)
+        maps_lay.addLayout(maps_hdr)
+
+        self.tbl_maps = QTextEdit()
+        self.tbl_maps.setReadOnly(True)
+        self.tbl_maps.setMaximumHeight(145)
+        self.tbl_maps.setFont(QFont("Courier New", 10))
+        self.tbl_maps.setStyleSheet(
+            "QTextEdit { background:#060a0f; border:1px solid #1a2332; "
+            "color:#7a9ab0; font-family:'Courier New',monospace; font-size:11px; }"
+        )
+        self.tbl_maps.setPlainText("No ECU version detected yet.")
+        maps_lay.addWidget(self.tbl_maps)
+
         root.addLayout(top_row)
+        root.addWidget(grp_maps)
         root.addWidget(grp_scale)
         root.addWidget(self.lbl_summary)
         root.addStretch()
 
     # ── Detection ─────────────────────────────────────────────────────────────
 
-    def _load_rom_for_detection(self):
+    def _update_map_table(self, version: str):
+        """Render the map address table for the given ECU version."""
+        maps = ECU_MAPS.get(version)
+        if not maps:
+            self.tbl_maps.setPlainText("Unknown ECU version -- no map table available.")
+            return
+
+        self.lbl_map_version.setText(f"ECU {version}  --  {len(maps)} maps")
+        lines = [f"  {'MAP NAME':<36} {'DATA':>6}  {'X-AXIS':>6}  {'Y-AXIS':>6}  {'SIZE':>5}  TYPE"]
+        lines.append("  " + "-" * 75)
+        for m in maps:
+            x_str = f"0x{m.xaxis_addr:04X}" if m.xaxis_addr else "  --  "
+            y_str = f"0x{m.yaxis_addr:04X}" if m.yaxis_addr else "  --  "
+            if m.is_scalar:
+                map_type = "scalar"
+            elif m.is_2d:
+                map_type = f"16x16"
+            else:
+                map_type = f"1x{m.cols}"
+            lines.append(
+                f"  {m.name:<36} 0x{m.data_addr:04X}  {x_str}  {y_str}  {m.size:>4}B  {map_type}"
+            )
+        self.tbl_maps.setPlainText("\n".join(lines))
+
+    def _load_ecu_definition(self):
+        """Load a .ecu TunerStudio definition file for display/reference."""
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load ECU Definition File", "",
+            "ECU Definition Files (*.ecu);;All Files (*)"
+        )
+        if not path:
+            return
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            import re
+            strings = re.findall(b'[\x20-\x7e]{5,}', data)
+            ecu_name = ""
+            for s in strings:
+                d = s.decode()
+                if "266" in d or "Early" in d or "Late" in d or "7A" in d:
+                    ecu_name = d
+                    break
+            ver = "266B" if "266B" in ecu_name or "Early" in ecu_name else "266D"
+            QMessageBox.information(
+                self, "ECU Definition Loaded",
+                f"Loaded: {os.path.basename(path)}\nIdentified: {ecu_name}\nVersion: {ver}\n\n"
+                f"Map addresses updated."
+            )
+            self._update_map_table(ver)
+            # Override the version if no ROM is loaded
+            if not self._detection:
+                self.lbl_version.setText(ver)
+        except Exception as e:
+            QMessageBox.critical(self, "Load Error", str(e))
+
+
         path, _ = QFileDialog.getOpenFileName(
             self, "Load ROM for ECU Detection", "",
             "ROM Files (*.034 *.bin *.ecu);;All Files (*)"
@@ -308,6 +392,19 @@ class HardwareConfigTab(QWidget):
         else:
             self.txt_warnings.setVisible(False)
 
+        # Auto-suggest hardware profile from known ROM library on CRC match
+        if result.cal_name == "Stock":
+            pass
+        elif result.crc32:
+            for rom in KNOWN_ROM_LIBRARY:
+                if rom.version == result.version and rom.stage not in ("Stock",):
+                    maf_idx = self.cmb_maf.findData(rom.maf)
+                    inj_idx = self.cmb_injectors.findData(rom.injectors)
+                    if maf_idx >= 0: self.cmb_maf.setCurrentIndex(maf_idx)
+                    if inj_idx >= 0: self.cmb_injectors.setCurrentIndex(inj_idx)
+                    break
+
+        self._update_map_table(result.version)
         self._on_config_changed()
 
     def set_teensy(self, teensy):
@@ -370,22 +467,19 @@ class HardwareConfigTab(QWidget):
         to_p   = INJECTOR_PROFILES[to_key]
 
         # Get map addresses for detected ECU version
-        from ecu_profiles import ECU_MAPS
         ver   = self.get_ecu_version()
-        addrs = ECU_MAPS.get(ver, ECU_MAPS["266D"])
+        mdef  = get_fuel_map_def(ver)
 
         data = bytearray(self._rom_data)
-        fuel_base = list(data[addrs.fuel_map:addrs.fuel_map + addrs.map_size])
+        fuel_base = list(data[mdef.data_addr:mdef.data_addr + mdef.size])
         scaled    = scale_fuel_map(fuel_base, from_key, to_key)
 
         # Write scaled map back into ROM
         for i, v in enumerate(scaled):
-            data[addrs.fuel_map + i] = v
+            data[mdef.data_addr + i] = v
         # Mirror if ROM is mirrored
-        if len(data) == 65536 and data[:0x8000] != data[0x8000:]:
-            pass  # not mirrored, leave alone
-        elif len(data) == 65536:
-            data[0x8000 + addrs.fuel_map:0x8000 + addrs.fuel_map + addrs.map_size] = bytes(scaled)
+        if len(data) == 65536:
+            data[0x8000 + mdef.data_addr:0x8000 + mdef.data_addr + mdef.size] = bytes(scaled)
 
         factor = from_p.cc_per_min / to_p.cc_per_min
         path, _ = QFileDialog.getSaveFileName(
@@ -398,9 +492,9 @@ class HardwareConfigTab(QWidget):
                 with open(path, "wb") as f:
                     f.write(bytes(data))
                 self.lbl_scale_result.setText(
-                    f"✓  Saved  {os.path.basename(path)}  —  "
-                    f"{from_p.cc_per_min}cc → {to_p.cc_per_min}cc  "
-                    f"(×{factor:.3f} applied to {addrs.map_size} fuel cells)"
+                    f"Saved  {os.path.basename(path)}  --  "
+                    f"{from_p.cc_per_min}cc -> {to_p.cc_per_min}cc  "
+                    f"(x{factor:.3f} applied to {mdef.size} fuel cells)"
                 )
                 self.lbl_scale_result.setStyleSheet("color:#2dff6e; font-size:11px;")
             except Exception as e:

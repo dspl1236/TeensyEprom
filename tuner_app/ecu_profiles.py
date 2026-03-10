@@ -1,175 +1,253 @@
 """
-ecu_profiles.py
-7A 20v ECU version detection, map addresses, and hardware profiles.
+ecu_profiles.py  —  7A 20v Tuner  v1.2.0
+=========================================
+ECU version detection, complete map address tables, and hardware profiles.
 
 SUPPORTED ECU VERSIONS
 ======================
-893 906 266 B  —  Early 7A, 2-connector (Audi 80/90 Coupe ~1988-1989)
-                   Motronic 2.x, no VSS input, no idle switch on ECU connector
+893 906 266 B  —  Early 7A, 2-connector (Audi 80/90/Coupe ~1988-1989)
+                   Motronic 2.x  |  8 maps  |  No VSS input
 893 906 266 D  —  Late 7A, 4-connector (Audi 90/Coupe Quattro ~1990-1991)
-                   Motronic 2.x, VSS + knock + extended I/O
+                   Motronic 2.x  |  7 maps  |  VSS + extended I/O
 
-DETECTION METHOD
-================
-1. Reset vector bytes at 0x7FFE-0x7FFF (most reliable)
-   266B: BE C7
-   266D: 4D 27
-2. Region 0x7E00-0x7FAF: 266B = all 0xFF (blank), 266D = programmed
-3. CRC32 of first 32KB as fallback fingerprint for known stock ROMs
+MAP ADDRESS DERIVATION
+======================
+Source: 034 Motorsport RIP Chip .ecu definition files
+  7A_Early_Generic_1.06.ecu  (266B)
+  7A_Late_Generic_1.01.ecu   (266D)
 
-MAP ADDRESSES (confirmed by stock vs tuned diff analysis)
-=========================================================
-266D:  Fuel map  0x0000-0x00FF  (16x16 = 256 bytes)
-       Timing    0x1000-0x10FF  (16x16 = 256 bytes)
-266B:  Fuel map  0x0000-0x00FF  (same layout, different values)
-       Timing    0x1000-0x10FF  (same layout)
+Address formula: EPROM_addr = dataHighStart_field * 256
 
-HARDWARE OPTIONS
-================
-MAF:
-  STOCK_7A    — OEM hotwire 7A MAF, freq intercept ×1.130 for 2.6L
-  BIG_MAF     — Bosch 0 280 218 037 in 225mm housing (VR6/S4)
-  MAF_18T     — 1.8T MAF (Bosch 0 280 218 091), higher flow range
+CONFIRMED MAP ADDRESSES
+=======================
+  266B (8 maps):
+    0x0000  Fueling Map             16x16 = 256 bytes
+    0x0100  Timing Map              16x16 = 256 bytes
+    0x0200  RPM / Load axes         16 bytes each
+    0x0600  CL Load Limit axis      16 bytes
+    0x0700  CL Disable RPM / Inj Scaler  1 byte each
+    0x0E00  Decel Cutoff axis       16 bytes
+    0x1000  Timing Map Knock        16x16 = 256 bytes
+    MAF Linearization 64 bytes also at 0x0200 region
 
-INJECTORS:
-  STOCK_225   — 225cc/min (stock 7A)
-  CC440       — 440cc/min
-  CC550       — 550cc/min
+  266D (7 maps, same fuel/timing/knock locations):
+    0x0000  Primary Fueling         16x16 = 256 bytes
+    0x0100  Primary Timing          16x16 = 256 bytes
+    0x0200  RPM/Load axes
+    0x0600  CL Fueling Load         16 bytes
+    0x0700  CL RPM Limit            1 byte
+    0x0E00  Decel Cutoff            16 bytes
+    0x1000  Timing Knock Safety     16x16 = 256 bytes
 
-Each combination has a scalar multiplier applied to the fuel map base values.
+KNOWN ROM CRC32 FINGERPRINTS (first 32KB)
+=========================================
+  0x35f85c9b  266D  Stock  893906266D
+  0x7f722a3c  266B  Stock  893906266B
+
+RESET VECTOR FINGERPRINTS (bytes at 0x7FFE-0x7FFF)
+===================================================
+  BE C7  ->  266B
+  4D 27  ->  266D
 """
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, List, Dict
 import zlib
 
 
-# ── ROM address constants ──────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Map definitions
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
-class MapAddresses:
-    fuel_map:   int
-    timing_map: int
-    map_size:   int = 256   # 16x16
+class MapDef:
+    """Single map table within an ECU ROM."""
+    name:        str
+    data_addr:   int        # byte address in EPROM
+    xaxis_addr:  int        # 0 = no x-axis (scalar)
+    yaxis_addr:  int        # 0 = no y-axis (1-D table)
+    cols:        int        # number of columns (x dimension)
+    rows:        int        # number of rows (y dimension); 1 = 1-D
+    description: str = ""
+    editable:    bool = True
+
+    @property
+    def size(self) -> int:
+        return self.cols * self.rows
+
+    @property
+    def is_2d(self) -> bool:
+        return self.rows > 1
+
+    @property
+    def is_scalar(self) -> bool:
+        return self.cols == 1 and self.rows == 1
 
 
-ECU_MAPS = {
-    "266B": MapAddresses(fuel_map=0x0000, timing_map=0x1000),
-    "266D": MapAddresses(fuel_map=0x0000, timing_map=0x1000),
+# ---------------------------------------------------------------------------
+# Per-ECU map tables  (addresses from 034 .ecu definition files)
+# ---------------------------------------------------------------------------
+
+ECU_MAPS: Dict[str, List[MapDef]] = {
+
+    "266B": [
+        MapDef(
+            name="Fueling Map",
+            data_addr=0x0000, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Primary fuel map  (Load% x RPM = injector pulse width scalar)"
+        ),
+        MapDef(
+            name="Timing Map",
+            data_addr=0x0100, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Primary ignition advance map  (degrees BTDC)"
+        ),
+        MapDef(
+            name="Timing Map Knock",
+            data_addr=0x1000, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Knock safety timing map -- ECU falls back here on knock detection"
+        ),
+        MapDef(
+            name="MAF Linearization",
+            data_addr=0x0200, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=64, rows=1,
+            description="MAF sensor linearization table -- maps raw frequency to load signal"
+        ),
+        MapDef(
+            name="CL Load Limit",
+            data_addr=0x0600, xaxis_addr=0x0600, yaxis_addr=0x0000,
+            cols=16, rows=1,
+            description="Closed-loop O2 feedback: disable above this load threshold (per RPM point)"
+        ),
+        MapDef(
+            name="Injection Scaler",
+            data_addr=0x0700, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Global injector scaling constant. Larger injector = smaller value. Larger MAF = larger value."
+        ),
+        MapDef(
+            name="CL Disable RPM",
+            data_addr=0x0700, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Disable all O2 closed-loop feedback above this RPM"
+        ),
+        MapDef(
+            name="Decel Cutoff",
+            data_addr=0x0E00, xaxis_addr=0x0E00, yaxis_addr=0x0000,
+            cols=16, rows=1,
+            description="Injector decel cutoff -- disable injectors below this load threshold per RPM"
+        ),
+    ],
+
+    "266D": [
+        MapDef(
+            name="Primary Fueling",
+            data_addr=0x0000, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Primary fuel map  (Load% x RPM = injector pulse width scalar)"
+        ),
+        MapDef(
+            name="Primary Timing",
+            data_addr=0x0100, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Primary ignition advance map  (degrees BTDC)"
+        ),
+        MapDef(
+            name="Timing Knock Safety",
+            data_addr=0x1000, xaxis_addr=0x0200, yaxis_addr=0x0200,
+            cols=16, rows=16,
+            description="Knock safety timing map -- ECU falls back here on knock detection"
+        ),
+        MapDef(
+            name="CL Fueling Load Threshold",
+            data_addr=0x0600, xaxis_addr=0x0600, yaxis_addr=0x0000,
+            cols=16, rows=1,
+            description="Closed-loop O2: disable above this load threshold per RPM"
+        ),
+        MapDef(
+            name="CL Fueling RPM Limit",
+            data_addr=0x0700, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Disable closed-loop O2 feedback above this RPM"
+        ),
+        MapDef(
+            name="Fuel Injector Scaler",
+            data_addr=0x0000, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Global injector scaler constant (bigger injector = smaller value)"
+        ),
+        MapDef(
+            name="Deceleration Cutoff",
+            data_addr=0x0E00, xaxis_addr=0x0E00, yaxis_addr=0x0000,
+            cols=16, rows=1,
+            description="Injector decel cutoff per RPM row"
+        ),
+    ],
 }
 
-# Reset vectors (bytes at 0x7FFE-0x7FFF in first 32KB half)
+
+def get_fuel_map_def(version: str) -> MapDef:
+    """Return the primary fuel MapDef for this ECU version."""
+    for m in ECU_MAPS.get(version, ECU_MAPS["266D"]):
+        if "fuel" in m.name.lower() or "fueling" in m.name.lower():
+            return m
+    return ECU_MAPS["266D"][0]
+
+
+def get_timing_map_def(version: str) -> MapDef:
+    """Return the primary timing MapDef for this ECU version."""
+    for m in ECU_MAPS.get(version, ECU_MAPS["266D"]):
+        if "timing" in m.name.lower() and "knock" not in m.name.lower():
+            return m
+    return ECU_MAPS["266D"][1]
+
+
+# ---------------------------------------------------------------------------
+# ECU version detection
+# ---------------------------------------------------------------------------
+
 RESET_VECTORS = {
     (0xBE, 0xC7): "266B",
     (0x4D, 0x27): "266D",
 }
 
-# 266B region 0x7E00-0x7FAF is all 0xFF (unprogrammed on early ECU)
-# 266D has real code there
-BLANK_REGION_START = 0x7E00
-BLANK_REGION_END   = 0x7EFF   # just check first 256 bytes of the blank area
-
-# Known CRC32 fingerprints of stock ROMs (first 32KB)
 KNOWN_ROMS = {
     0x35f85c9b: ("266D", "Stock", "893906266D"),
     0x7f722a3c: ("266B", "Stock", "893906266B"),
 }
 
+BLANK_REGION_START = 0x7E00   # 266B has 0xFF here; 266D has code
 
-# ── Hardware profiles ─────────────────────────────────────────────────────────
-
-@dataclass
-class MAFProfile:
-    name:        str
-    display:     str
-    freq_scalar: float    # multiply intercepted freq by this
-    max_flow_hz: int      # max MAF output frequency in Hz
-    notes:       str = ""
-
-MAF_PROFILES = {
-    "STOCK_7A": MAFProfile(
-        name="STOCK_7A",
-        display="Stock 7A MAF",
-        freq_scalar=1.130,   # 2.6L / 2.3L = 1.130 displacement correction
-        max_flow_hz=5000,
-        notes="OEM hotwire, freq intercept ×1.130 for 2.6L stroker"
-    ),
-    "BIG_MAF": MAFProfile(
-        name="BIG_MAF",
-        display="Big MAF (225mm VR6/S4 housing)",
-        freq_scalar=1.0,     # no correction needed, housing calibrated
-        max_flow_hz=8000,
-        notes="Bosch 0 280 218 037 in 225mm billet housing"
-    ),
-    "MAF_18T": MAFProfile(
-        name="MAF_18T",
-        display="1.8T MAF",
-        freq_scalar=0.92,    # flow curve correction factor
-        max_flow_hz=9500,
-        notes="Bosch 0 280 218 091 — requires freq synthesis output"
-    ),
-}
-
-@dataclass
-class InjectorProfile:
-    name:       str
-    display:    str
-    cc_per_min: int
-    scalar:     float     # fuel map multiplier relative to stock 225cc
-    notes:      str = ""
-
-INJECTOR_PROFILES = {
-    "STOCK_225": InjectorProfile(
-        name="STOCK_225",
-        display="Stock 225cc",
-        cc_per_min=225,
-        scalar=1.000,
-        notes="Factory 7A injectors"
-    ),
-    "CC440": InjectorProfile(
-        name="CC440",
-        display="440cc",
-        cc_per_min=440,
-        scalar=0.511,    # 225/440 = need less fuel per pulse (map values scale down)
-        notes="Common 440cc upgrade — e.g. Bosch green top"
-    ),
-    "CC550": InjectorProfile(
-        name="CC550",
-        display="550cc",
-        cc_per_min=550,
-        scalar=0.409,    # 225/550
-        notes="034 Stage 2 550cc — matches 034 turbo tune"
-    ),
-}
-
-
-# ── Detection ─────────────────────────────────────────────────────────────────
 
 @dataclass
 class DetectionResult:
-    version:      str            # "266B", "266D", or "UNKNOWN"
-    confidence:   str            # "HIGH", "MEDIUM", "LOW"
-    method:       str            # how we detected it
-    cal_name:     str = ""       # known cal name if matched
-    part_number:  str = ""       # e.g. "893906266D"
-    crc32:        int = 0
-    warnings:     list = field(default_factory=list)
+    version:     str
+    confidence:  str            # "HIGH" | "MEDIUM" | "LOW"
+    method:      str
+    cal_name:    str = ""
+    part_number: str = ""
+    crc32:       int = 0
+    warnings:    list = field(default_factory=list)
 
 
 def detect_ecu_version(rom_data: bytes) -> DetectionResult:
     """
-    Detect ECU version from raw ROM bytes.
-    Returns a DetectionResult with version, confidence, and method used.
+    Identify ECU version from raw ROM bytes.
+
+    Priority order:
+      1. CRC32 match against known stock ROMs   -> HIGH confidence
+      2. Reset vector at 0x7FFE                 -> HIGH confidence
+      3. Blank EPROM region at 0x7E00           -> MEDIUM confidence
     """
-    # Work with first 32KB (ROM is mirrored)
     data = rom_data[:0x8000]
     if len(data) < 0x8000:
         data = data + bytes(0x8000 - len(data))
 
-    warnings = []
     crc = zlib.crc32(data) & 0xFFFFFFFF
 
-    # ── Method 1: Known CRC32 fingerprint (highest confidence) ────────────────
+    # Method 1: known CRC
     if crc in KNOWN_ROMS:
         ver, cal, pn = KNOWN_ROMS[crc]
         return DetectionResult(
@@ -178,82 +256,183 @@ def detect_ecu_version(rom_data: bytes) -> DetectionResult:
             cal_name=cal, part_number=pn, crc32=crc
         )
 
-    # ── Method 2: Reset vector at 0x7FFE ─────────────────────────────────────
+    # Method 2: reset vector
     vec = (data[0x7FFE], data[0x7FFF])
     if vec in RESET_VECTORS:
-        ver = RESET_VECTORS[vec]
         return DetectionResult(
-            version=ver, confidence="HIGH",
+            version=RESET_VECTORS[vec], confidence="HIGH",
             method=f"Reset vector {vec[0]:02X}{vec[1]:02X} @ 0x7FFE",
             crc32=crc
         )
 
-    # ── Method 3: Check 266B blank region ────────────────────────────────────
+    # Method 3: blank EPROM region
     region = data[BLANK_REGION_START:BLANK_REGION_START + 256]
-    blank_count = sum(1 for b in region if b == 0xFF)
-    if blank_count > 200:
+    blank  = sum(1 for b in region if b == 0xFF)
+    if blank > 200:
         return DetectionResult(
             version="266B", confidence="MEDIUM",
-            method=f"Blank region at 0x{BLANK_REGION_START:04X} ({blank_count}/256 = 0xFF)",
+            method=f"Blank region @ 0x{BLANK_REGION_START:04X} ({blank}/256 = 0xFF)",
             crc32=crc,
-            warnings=["Could not confirm via reset vector — version inferred from blank EPROM region"]
+            warnings=["Version inferred from blank EPROM area -- could not confirm via reset vector"]
         )
-    elif blank_count < 20:
+    elif blank < 20:
         return DetectionResult(
             version="266D", confidence="MEDIUM",
-            method=f"Programmed region at 0x{BLANK_REGION_START:04X} (only {blank_count}/256 = 0xFF)",
+            method=f"Programmed region @ 0x{BLANK_REGION_START:04X} ({blank}/256 = 0xFF)",
             crc32=crc,
-            warnings=["Could not confirm via reset vector — version inferred from programmed region"]
+            warnings=["Version inferred from programmed region -- could not confirm via reset vector"]
         )
 
-    # ── Unknown ───────────────────────────────────────────────────────────────
     return DetectionResult(
         version="UNKNOWN", confidence="LOW",
-        method="No match found",
+        method="No fingerprint matched",
         crc32=crc,
         warnings=[
             "Could not identify ECU version.",
-            f"Reset vector: {vec[0]:02X} {vec[1]:02X}",
+            f"Reset vector bytes: {vec[0]:02X} {vec[1]:02X}",
             f"CRC32: {crc:#010x}",
-            "Try uploading the other 034 files or check ROM integrity."
+            "Check 034motorsport.com/downloads for the correct .034 file"
         ]
     )
 
 
-# ── Fuel map scaling ──────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Hardware profiles
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MAFProfile:
+    name:        str
+    display:     str
+    freq_scalar: float      # base frequency multiplier
+    max_flow_hz: int
+    notes:       str = ""
+
+MAF_PROFILES: Dict[str, MAFProfile] = {
+    "STOCK_7A": MAFProfile(
+        name="STOCK_7A",
+        display="Stock 7A MAF",
+        freq_scalar=1.130,
+        max_flow_hz=5000,
+        notes="OEM hotwire. Freq intercept x1.130 for 2.6L stroker (adjustable via displacement setting)"
+    ),
+    "BIG_MAF": MAFProfile(
+        name="BIG_MAF",
+        display="Big MAF  (225mm VR6/S4 housing)",
+        freq_scalar=1.0,
+        max_flow_hz=8000,
+        notes="Bosch 0 280 218 037 in 225mm billet housing -- no displacement correction needed"
+    ),
+    "MAF_18T": MAFProfile(
+        name="MAF_18T",
+        display="1.8T MAF",
+        freq_scalar=0.92,
+        max_flow_hz=9500,
+        notes="Bosch 0 280 218 091 -- requires freq synthesis output on Teensy D21"
+    ),
+}
+
+
+@dataclass
+class InjectorProfile:
+    name:       str
+    display:    str
+    cc_per_min: int
+    notes:      str = ""
+
+    @property
+    def scalar_from_stock(self) -> float:
+        """Fuel map multiplier relative to stock 225cc injectors."""
+        return round(225.0 / self.cc_per_min, 4)
+
+INJECTOR_PROFILES: Dict[str, InjectorProfile] = {
+    "STOCK_225": InjectorProfile(
+        name="STOCK_225",
+        display="Stock 225cc",
+        cc_per_min=225,
+        notes="Factory 7A injectors"
+    ),
+    "CC440": InjectorProfile(
+        name="CC440",
+        display="440cc",
+        cc_per_min=440,
+        notes="Common 440cc upgrade  (e.g. Bosch green top)"
+    ),
+    "CC550": InjectorProfile(
+        name="CC550",
+        display="550cc",
+        cc_per_min=550,
+        notes="034 Stage 2 550cc -- matches 034 turbo tune calibrations"
+    ),
+}
+
+
+# ---------------------------------------------------------------------------
+# Scaling helpers
+# ---------------------------------------------------------------------------
 
 def scale_fuel_map(base_map: list, from_injector: str, to_injector: str) -> list:
     """
-    Scale a 256-byte fuel map from one injector size to another.
-    Values are clamped to 0-255.
+    Rescale a fuel map from one injector size to another.
+    Each value is multiplied by src_cc/dst_cc and clamped to 0-255.
     """
     src = INJECTOR_PROFILES.get(from_injector)
     dst = INJECTOR_PROFILES.get(to_injector)
-    if not src or not dst:
-        return base_map
-    # scalar = src_cc / dst_cc  (more cc = need proportionally less map value)
+    if not src or not dst or src.cc_per_min == dst.cc_per_min:
+        return list(base_map)
     factor = src.cc_per_min / dst.cc_per_min
     return [max(0, min(255, round(v * factor))) for v in base_map]
 
 
-def get_maf_scalar(maf_type: str, displacement_ratio: float = 1.130) -> float:
-    """Get MAF frequency multiplier for given MAF type and displacement ratio."""
+def get_maf_scalar(maf_type: str, displacement_cc: int = 2600) -> float:
+    """
+    Return MAF frequency multiplier.
+    For STOCK_7A: scalar = displacement_cc / 2300 (stock engine displacement).
+    """
     profile = MAF_PROFILES.get(maf_type)
     if not profile:
         return 1.0
     if maf_type == "STOCK_7A":
-        return displacement_ratio   # user-configurable displacement correction
+        return round(displacement_cc / 2300.0, 4)
     return profile.freq_scalar
 
-
-# ── Summary string ────────────────────────────────────────────────────────────
 
 def hardware_summary(maf: str, injectors: str, displacement_cc: int = 2600) -> str:
     m = MAF_PROFILES.get(maf)
     i = INJECTOR_PROFILES.get(injectors)
     if not m or not i:
         return "Unknown config"
+    scalar = get_maf_scalar(maf, displacement_cc)
     return (
-        f"{displacement_cc}cc  |  {m.display}  |  {i.display} injectors  |  "
-        f"MAF scalar ×{get_maf_scalar(maf):.3f}"
+        f"{displacement_cc}cc  |  {m.display}  |  {i.display} injectors  "
+        f"|  MAF scalar x{scalar:.4f}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Known ROM library  (filenames from 034motorsport.com/downloads)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class KnownROM:
+    filename:   str
+    version:    str
+    stage:      str
+    maf:        str
+    injectors:  str
+    notes:      str
+
+KNOWN_ROM_LIBRARY: List[KnownROM] = [
+    # 266B -- Early 2-connector ECU
+    KnownROM("034 - 893906266B Stock",                             "266B", "Stock",   "STOCK_7A", "STOCK_225", "OEM stock"),
+    KnownROM("034 - 893906266B - NA Big MAF 91Oct R2",             "266B", "NA",      "BIG_MAF",  "STOCK_225", "NA Big MAF 91oct"),
+    KnownROM("034 - 893906266B - Stage 1 91Oct R1",                "266B", "Stage1",  "STOCK_7A", "STOCK_225", "Stage 1 NA"),
+    KnownROM("034 - 893906266B - Stage 1 91 Octane Turbo",         "266B", "TurboS1", "STOCK_7A", "STOCK_225", "Turbo Stage 1"),
+    KnownROM("034 - 893906266B - Stage 2 91 Octane 550cc Turbo",   "266B", "TurboS2", "STOCK_7A", "CC550",     "Turbo Stage 2 550cc"),
+    # 266D -- Late 4-connector ECU
+    KnownROM("034 - 893906266D Stock",                             "266D", "Stock",   "STOCK_7A", "STOCK_225", "OEM stock"),
+    KnownROM("034 - 893906266D Turbo Stage 2 550cc",               "266D", "TurboS2", "STOCK_7A", "CC550",     "Turbo Stage 2 550cc"),
+    KnownROM("034 - 893906266D Big MAF 91Oct R1",                  "266D", "NA",      "BIG_MAF",  "STOCK_225", "NA Big MAF"),
+    KnownROM("034 - 893906266D Stage 1 91Oct R1",                  "266D", "Stage1",  "STOCK_7A", "STOCK_225", "Stage 1 NA"),
+    KnownROM("034 Turbo Kit Stage 1 91 R2 893906266B",             "266B", "TurboS1", "STOCK_7A", "STOCK_225", "Turbo Stage 1 R2"),
+]
