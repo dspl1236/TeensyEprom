@@ -30,14 +30,16 @@ CONFIRMED MAP ADDRESSES
     0x1000  Timing Map Knock        16x16 = 256 bytes
     MAF Linearization 64 bytes also at 0x0200 region
 
-  266D (7 maps, same fuel/timing/knock locations):
-    0x0000  Primary Fueling         16x16 = 256 bytes
-    0x0100  Primary Timing          16x16 = 256 bytes
-    0x0200  RPM/Load axes
-    0x0600  CL Fueling Load         16 bytes
-    0x0700  CL RPM Limit            1 byte
-    0x0E00  Decel Cutoff            16 bytes
-    0x1000  Timing Knock Safety     16x16 = 256 bytes
+  266D (7 maps):
+    0x0000  Primary Fueling         18x16 = 288 bytes  (rows=RPM, cols=Load kPa)
+    0x0120  Primary Timing          18x16 = 288 bytes
+    0x0240  RPM axis (Y)            18 x 2-byte BE words  @ 0x0260
+    0x0250  Load axis (X)           16 x 1-byte values   @ 0x0250
+    0x0600  CL Fueling Load         16 bytes (1-D, axis = RPM)
+    0x0700  CL RPM Limit            1 byte (scalar)
+    0x0701  Fuel Injector Scaler    1 byte (scalar)
+    0x0E00  Decel Cutoff            16 bytes (1-D, axis = RPM)
+    0x1000  Timing Knock Safety     18x16 = 288 bytes
 
 KNOWN ROM CRC32 FINGERPRINTS (first 32KB)
 =========================================
@@ -144,20 +146,20 @@ ECU_MAPS: Dict[str, List[MapDef]] = {
     "266D": [
         MapDef(
             name="Primary Fueling",
-            data_addr=0x0000, xaxis_addr=0x0200, yaxis_addr=0x0200,
-            cols=16, rows=16,
-            description="Primary fuel map  (Load% x RPM = injector pulse width scalar)"
+            data_addr=0x0000, xaxis_addr=0x0250, yaxis_addr=0x0260,
+            cols=16, rows=18,
+            description="Primary fuel map  (RPM × Load kPa = injector pulse width scalar)"
         ),
         MapDef(
             name="Primary Timing",
-            data_addr=0x0100, xaxis_addr=0x0200, yaxis_addr=0x0200,
-            cols=16, rows=16,
+            data_addr=0x0120, xaxis_addr=0x0250, yaxis_addr=0x0260,
+            cols=16, rows=18,
             description="Primary ignition advance map  (degrees BTDC)"
         ),
         MapDef(
             name="Timing Knock Safety",
-            data_addr=0x1000, xaxis_addr=0x0200, yaxis_addr=0x0200,
-            cols=16, rows=16,
+            data_addr=0x1000, xaxis_addr=0x0250, yaxis_addr=0x0260,
+            cols=16, rows=18,
             description="Knock safety timing map -- ECU falls back here on knock detection"
         ),
         MapDef(
@@ -174,7 +176,7 @@ ECU_MAPS: Dict[str, List[MapDef]] = {
         ),
         MapDef(
             name="Fuel Injector Scaler",
-            data_addr=0x0000, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            data_addr=0x0701, xaxis_addr=0x0000, yaxis_addr=0x0000,
             cols=1, rows=1,
             description="Global injector scaler constant (bigger injector = smaller value)"
         ),

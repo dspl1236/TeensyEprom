@@ -12,14 +12,28 @@ from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QBrush
 
 
-# Row/col axis labels for 893906266D style maps
-RPM_LABELS  = ["500", "800", "1000", "1200", "1500", "1800", "2200",
-               "2600", "3000", "3500", "4000", "4500", "5000", "5500", "6000", "6500"]
-LOAD_LABELS = ["10", "20", "30", "40", "50", "60", "70", "80",
-               "90", "100", "110", "120", "140", "160", "180", "200"]
+# Axis labels for 893906266D (7A Late) maps — confirmed from 034 RIP Chip tool screenshots
+# Source: 034 - 893906266D Stock.034 + 7A_Late_Generic_1.01.ecu
+#
+# ORIENTATION: rows = RPM (Y axis), cols = Load kPa (X axis)
+# This matches the 034 tool layout exactly.
+#
+# RPM axis: 18 breakpoints (Y, rows)
+RPM_LABELS = [
+    "700", "750", "1000", "1250", "1500", "1750",
+    "2000", "2500", "2750", "3000", "3500", "4000",
+    "4400", "4800", "5000", "5500", "6000", "6300",
+]
 
-ROWS = 16
-COLS = 16
+# Load axis: 16 breakpoints in kPa (X, cols)
+LOAD_LABELS = [
+    "13", "19", "24", "28", "33", "39",
+    "45", "51", "57", "63", "69", "76",
+    "82", "88", "95", "100",
+]
+
+ROWS = 18   # RPM rows
+COLS = 16   # Load kPa columns
 
 
 def _interpolate_color(value: int, lo: int, hi: int) -> QColor:
@@ -62,9 +76,9 @@ class MapTable(QTableWidget):
         self.itemChanged.connect(self._on_cell_changed)
 
     def _setup_table(self):
-        # Headers
-        self.setHorizontalHeaderLabels(RPM_LABELS)
-        self.setVerticalHeaderLabels(LOAD_LABELS)
+        # Headers — cols = Load kPa, rows = RPM  (matches 034 RIP Chip tool)
+        self.setHorizontalHeaderLabels(LOAD_LABELS)
+        self.setVerticalHeaderLabels(RPM_LABELS)
 
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.verticalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -86,8 +100,8 @@ class MapTable(QTableWidget):
         self.blockSignals(False)
 
     def load_data(self, data: list):
-        """Load 256-byte flat array into table and apply colours."""
-        if len(data) != 256:
+        """Load flat array (ROWS*COLS bytes) into table and apply colours."""
+        if len(data) != ROWS * COLS:
             return
         self._data = list(data)
         self._lo = min(data)
@@ -192,7 +206,7 @@ class MapEditorTab(QWidget):
         fuel_lay.setContentsMargins(0, 0, 0, 0)
         self.fuel_table = MapTable("fuel")
         fuel_lay.addWidget(QLabel(
-            "Fuel Map — 16×16  |  Rows = Load (MAP kPa)  |  Cols = RPM",
+            "Fuel Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
             styleSheet="color:#3d5068; font-size:11px; padding: 4px 0;"
         ))
         fuel_lay.addWidget(self.fuel_table)
@@ -204,7 +218,7 @@ class MapEditorTab(QWidget):
         timing_lay.setContentsMargins(0, 0, 0, 0)
         self.timing_table = MapTable("timing")
         timing_lay.addWidget(QLabel(
-            "Timing Map — 16×16  |  Rows = Load (MAP kPa)  |  Cols = RPM",
+            "Timing Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
             styleSheet="color:#3d5068; font-size:11px; padding: 4px 0;"
         ))
         timing_lay.addWidget(self.timing_table)
@@ -247,22 +261,24 @@ class MapEditorTab(QWidget):
             b.setEnabled(False)
 
     def highlight_operating_cell(self, rpm: int, map_kpa: float):
-        """Highlight current operating cell based on live RPM/MAP."""
-        # RPM axis
-        rpm_vals = [500, 800, 1000, 1200, 1500, 1800, 2200,
-                    2600, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500]
-        col = 0
+        """Highlight current operating cell based on live RPM/MAP.
+        Row = RPM, Col = Load kPa  (matches 034 RIP Chip tool orientation)
+        """
+        # RPM axis (rows) — 18 breakpoints
+        rpm_vals = [700, 750, 1000, 1250, 1500, 1750, 2000, 2500,
+                    2750, 3000, 3500, 4000, 4400, 4800, 5000, 5500, 6000, 6300]
+        row = 0
         for i, r in enumerate(rpm_vals):
             if rpm >= r:
-                col = i
+                row = i
 
-        # Load axis (MAP kPa)
-        load_vals = [10, 20, 30, 40, 50, 60, 70, 80,
-                     90, 100, 110, 120, 140, 160, 180, 200]
-        row = 0
+        # Load axis (cols) — 16 breakpoints in kPa
+        load_vals = [13, 19, 24, 28, 33, 39, 45, 51,
+                     57, 63, 69, 76, 82, 88, 95, 100]
+        col = 0
         for i, l in enumerate(load_vals):
             if map_kpa >= l:
-                row = i
+                col = i
 
         self.fuel_table.highlight_cell(row, col)
         self.timing_table.highlight_cell(row, col)
