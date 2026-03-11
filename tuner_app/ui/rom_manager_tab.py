@@ -511,10 +511,10 @@ class OfflineRomEditor(QWidget):
                 "Fuel Map (Lambda) — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
                 "display=signed×0.007813+1.0  |  1.000=stoich  |  stock: 0.625–0.867")
         elif is_aah:
-            fuel_display = [raw_to_display(b) for b in raw_fuel]
+            fuel_display = [raw_to_lambda(b) for b in raw_fuel]
             self.lbl_fuel_info.setText(
                 "Fuel Map (V6 AAH) — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
-                "display=signed+128  |  stock: 78–141  |  RPM axis 500–6000")
+                "display=signed×0.007813+1.0  (Lambda)  |  1.000=stoich  |  stock Stage1: 0.539–1.414  |  RPM axis 500–6000")
         else:
             fuel_display = [raw_to_display(b) for b in raw_fuel]
             self.lbl_fuel_info.setText(
@@ -524,7 +524,7 @@ class OfflineRomEditor(QWidget):
         timing_rpm = read_timing_rpm_axis(bytes(rom[:32768]), self._ecu_version)
         load_kpa  = read_load_axis(bytes(rom[:32768]), self._ecu_version)
 
-        self.fuel_table.load_data([round(v, 3) if is_266b else int(v) for v in fuel_display])
+        self.fuel_table.load_data([round(v, 3) if (is_266b or is_aah) else int(v) for v in fuel_display])
         self.fuel_table.set_axis_labels(fuel_rpm, load_kpa)
 
         # Timing Map
@@ -573,6 +573,7 @@ class OfflineRomEditor(QWidget):
 
     def get_data(self) -> bytes:
         is_266b = self._ecu_version == "266B"
+        is_aah  = self._ecu_version == "AAH"
         rom = self._romdata
 
         for r in range(ROWS):
@@ -580,7 +581,7 @@ class OfflineRomEditor(QWidget):
                 fi = self.fuel_table.item(r, c)
                 if fi:
                     try:
-                        raw = lambda_to_raw(float(fi.text())) if is_266b else display_to_raw(float(fi.text()))
+                        raw = lambda_to_raw(float(fi.text())) if (is_266b or is_aah) else display_to_raw(float(fi.text()))
                         rom[0x0000 + r*COLS + c] = raw
                     except (ValueError, TypeError): pass
                 ti = self.timing_table.item(r, c)

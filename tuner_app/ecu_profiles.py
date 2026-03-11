@@ -533,8 +533,9 @@ ECU_MAPS: Dict[str, List[MapDef]] = {
             data_addr=0x0000, xaxis_addr=0x0280, yaxis_addr=0x0270,
             cols=16, rows=16,
             description="Primary fuel map (RPM × Load kPa).  "
-                        "display = signed(native_byte) + 128  (stock range: 78–141).  "
-                        "RPM axis starts at 500/750 (not 600/800 like the 7A)."
+                        "display = signed(native_byte) × 0.007813 + 1.0  (Lambda target, same formula as 266B).  "
+                        "1.000 = stoich.  RPM axis starts at 500/750.  "
+                        "034 app displays with axes transposed (twoDInverse) but ROM layout is unchanged."
         ),
         MapDef(
             name="Timing Map",
@@ -664,8 +665,8 @@ BLANK_REGION_START = 0x7E00   # 266B has 0xFF here; 266D has code
 
 CHECKSUM_AAH = {
     "target":  3_684_096,   # 0x383700 — confirmed from stock and Stage1 ROMs
-    "cs_from": 0x6AE6,      # 25-byte correction region at end of used ROM
-    "cs_to":   0x6AFE,      # inclusive
+    "cs_from": 0x6700,      # correction region per 034 .ecu (Correction Area FROM: #6700)
+    "cs_to":   0x7D1E,      # inclusive (Correction Area To: #7d1E)
 }
 
 
