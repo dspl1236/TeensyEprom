@@ -175,33 +175,75 @@ def unscramble_rom(data: bytes) -> bytes:
 
 
 # ---------------------------------------------------------------------------
-# 266D axis breakpoints — READ FROM ROM (addresses from .ecu definition)
-# These defaults are the stock values decoded from 034_-_893906266D_Stock.034
+# ---------------------------------------------------------------------------
+# Axis breakpoints — READ FROM ROM at known addresses
+# Fuel and Timing maps have SEPARATE RPM axes in the ROM.
+# Load axis is shared between both maps on both ECU versions.
+# Confirmed from decoded stock ROMs (both 266B and 266D).
 # ---------------------------------------------------------------------------
 
-RPM_AXIS_ADDR_266D  = 0x0250   # yAxisLowStart=592,  factor=25.0
-LOAD_AXIS_ADDR_266D = 0x0260   # xAxisLowStart=608,  factor=0.3922
+AXIS_FACTOR_RPM  = 25.0
+AXIS_FACTOR_LOAD = 0.3922
 
-RPM_AXIS_FACTOR_266D  = 25.0
-LOAD_AXIS_FACTOR_266D = 0.3922
+# 266D axis addresses
+FUEL_RPM_AXIS_ADDR_266D   = 0x0250   # fuel map RPM axis      (factor=25)
+LOAD_AXIS_ADDR_266D       = 0x0260   # shared load axis       (factor=0.3922)
+TIMING_RPM_AXIS_ADDR_266D = 0x0270   # timing/knock RPM axis  (factor=25)
+TIMING_LOAD_AXIS_ADDR_266D= 0x0280   # timing load axis       (factor=0.3922, same values)
 
-# Stock defaults (decoded from the stock 034 ROM)
-RPM_AXIS_266D  = [600, 800, 1000, 1250, 1500, 1750, 2000, 2250,
-                  2500, 2750, 3000, 3500, 4000, 5000, 6000, 6300]
+# 266B axis addresses (same addresses, different fuel RPM breakpoints)
+FUEL_RPM_AXIS_ADDR_266B   = 0x0250
+LOAD_AXIS_ADDR_266B       = 0x0260
+TIMING_RPM_AXIS_ADDR_266B = 0x0270
+TIMING_LOAD_AXIS_ADDR_266B= 0x0280
 
+# ---------------------------------------------------------------------------
+# Stock default axis values (decoded from unscrambled stock ROMs)
+#
+# IMPORTANT: Fuel RPM axis differs between 266B and 266D in the midrange.
+# Timing RPM axis is IDENTICAL on both ECUs (700/750 start, not 600/800).
+# The fuel RPM axis starts at 600/800; timing starts at 700/750.
+# ---------------------------------------------------------------------------
+
+# 266D fuel RPM: 600, 800, 1000 ... 6300
+RPM_AXIS_266D = [600, 800, 1000, 1250, 1500, 1750, 2000, 2250,
+                 2500, 2750, 3000, 3500, 4000, 5000, 6000, 6300]
+
+# 266B fuel RPM: 600, 800, 1000 ... 6375  (skips 1750, 2250; ends at 6375)
+RPM_AXIS_266B = [600, 800, 1000, 1250, 1500, 2000, 2500, 2750,
+                 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6375]
+
+# Timing RPM axis: identical on both 266B and 266D
+TIMING_RPM_AXIS = [700, 750, 1000, 1250, 1500, 1750, 2000, 3000,
+                   3500, 4000, 4400, 4600, 5000, 5500, 6000, 6300]
+
+# Load axis: identical on both ECUs, shared by fuel and timing maps (kPa)
 LOAD_AXIS_266D = [12.6, 18.8, 23.5, 28.2, 32.9, 38.8, 44.7, 50.6,
-                  56.9, 63.1, 69.4, 75.7, 82.0, 88.2, 94.5, 100.0]  # kPa
+                  56.9, 63.1, 69.4, 75.7, 82.0, 88.2, 94.5, 100.0]
+LOAD_AXIS_266B = LOAD_AXIS_266D   # confirmed identical
 
 
+def read_fuel_rpm_axis(native_rom: bytes, version: str = "266D") -> list:
+    """Read 16 fuel-map RPM breakpoints from native ROM bytes."""
+    addr = FUEL_RPM_AXIS_ADDR_266B if version == "266B" else FUEL_RPM_AXIS_ADDR_266D
+    return [int(native_rom[addr + i] * AXIS_FACTOR_RPM) for i in range(16)]
+
+def read_timing_rpm_axis(native_rom: bytes, version: str = "266D") -> list:
+    """Read 16 timing-map RPM breakpoints from native ROM bytes."""
+    addr = TIMING_RPM_AXIS_ADDR_266B if version == "266B" else TIMING_RPM_AXIS_ADDR_266D
+    return [int(native_rom[addr + i] * AXIS_FACTOR_RPM) for i in range(16)]
+
+def read_load_axis(native_rom: bytes, version: str = "266D") -> list:
+    """Read 16 load-axis breakpoints (kPa) from native ROM bytes."""
+    addr = LOAD_AXIS_ADDR_266B if version == "266B" else LOAD_AXIS_ADDR_266D
+    return [round(native_rom[addr + i] * AXIS_FACTOR_LOAD, 1) for i in range(16)]
+
+# Legacy aliases — kept for backwards compat
 def read_rpm_axis_from_rom(native_rom: bytes) -> list:
-    """Read 16 RPM breakpoints from native ROM bytes."""
-    return [native_rom[RPM_AXIS_ADDR_266D + i] * RPM_AXIS_FACTOR_266D
-            for i in range(16)]
+    return read_fuel_rpm_axis(native_rom, "266D")
 
 def read_load_axis_from_rom(native_rom: bytes) -> list:
-    """Read 16 Load (kPa) breakpoints from native ROM bytes."""
-    return [round(native_rom[LOAD_AXIS_ADDR_266D + i] * LOAD_AXIS_FACTOR_266D, 1)
-            for i in range(16)]
+    return read_load_axis(native_rom, "266D")
 
 
 # ---------------------------------------------------------------------------

@@ -23,7 +23,8 @@ from ecu_profiles import (
     unscramble_rom, raw_to_display, display_to_raw,
     raw_to_lambda, lambda_to_raw,
     read_rpm_axis_from_rom, read_load_axis_from_rom,
-    RPM_AXIS_266D, LOAD_AXIS_266D,
+    read_fuel_rpm_axis, read_timing_rpm_axis, read_load_axis,
+    RPM_AXIS_266D, RPM_AXIS_266B, TIMING_RPM_AXIS, LOAD_AXIS_266D,
     FUEL_DATA_FACTOR, FUEL_DATA_OFFSET, FUEL_DATA_SIGNED,
     apply_checksum, verify_checksum,
     detect_ecu_version, KNOWN_ROM_LIBRARY, ECU_MAPS,
@@ -513,13 +514,20 @@ class OfflineRomEditor(QWidget):
             self.lbl_fuel_info.setText(
                 "Fuel Map — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
                 "display=signed+128  |  stock: 40–123")
+        fuel_rpm  = read_fuel_rpm_axis(bytes(rom[:32768]), self._ecu_version)
+        timing_rpm = read_timing_rpm_axis(bytes(rom[:32768]), self._ecu_version)
+        load_kpa  = read_load_axis(bytes(rom[:32768]), self._ecu_version)
+
         self.fuel_table.load_data([round(v, 3) if is_266b else int(v) for v in fuel_display])
+        self.fuel_table.set_axis_labels(fuel_rpm, load_kpa)
 
         # Timing Map
         self.timing_table.load_data(list(rom[0x0100:0x0100 + MAP_SIZE]))
+        self.timing_table.set_axis_labels(timing_rpm, load_kpa)
 
         # Knock Timing
         self.knock_table.load_data(list(rom[0x1000:0x1000 + MAP_SIZE]))
+        self.knock_table.set_axis_labels(timing_rpm, load_kpa)
 
         # Injection Scaler
         INJ_ADDR = 0x077E

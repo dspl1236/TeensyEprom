@@ -12,23 +12,23 @@ from PyQt5.QtCore import Qt, pyqtSlot
 from PyQt5.QtGui import QColor, QFont, QBrush
 
 from ecu_profiles import (
-    RPM_AXIS_266D, LOAD_AXIS_266D,
+    RPM_AXIS_266D, RPM_AXIS_266B, TIMING_RPM_AXIS, LOAD_AXIS_266D,
     raw_to_display, display_to_raw,
 )
 
 
-# Axis labels for 893906266D (7A Late) maps — confirmed from 034 RIP Chip .ecu file
-# Source: 7A_Late_Generic_1.01.ecu Java serialisation (yAxisFactor=25, xAxisFactor=0.3922)
-# Axis values are HARDCODED in the ECU definition — they are NOT stored in the ROM.
+# Default axis labels — used by MapEditorTab live editor (always 266D).
+# OfflineRomEditor passes the correct per-map, per-version labels directly
+# to set_axis_labels() after loading a ROM.
+#
+# IMPORTANT: Fuel and Timing maps have DIFFERENT RPM axes:
+#   Fuel RPM:   266D = 600/800/... 266B = 600/800/... (different midrange)
+#   Timing RPM: both ECUs = 700/750/1000/... (shared, different from fuel)
 #
 # ORIENTATION: rows = RPM (Y axis), cols = Load kPa (X axis)
-# This matches the 034 tool layout exactly.
-#
-# RPM axis: 16 breakpoints (Y, rows)
-RPM_LABELS = [str(r) for r in RPM_AXIS_266D]   # 16 values
-
-# Load axis: 16 breakpoints in kPa (X, cols)
-LOAD_LABELS = [str(k) for k in LOAD_AXIS_266D]  # 16 values
+RPM_LABELS        = [str(r) for r in RPM_AXIS_266D]    # 266D fuel default
+TIMING_RPM_LABELS = [str(r) for r in TIMING_RPM_AXIS]  # both ECUs timing
+LOAD_LABELS       = [str(k) for k in LOAD_AXIS_266D]   # shared load axis
 
 ROWS = 16   # RPM rows    (16×16 confirmed from 7A_Late_Generic_1.01.ecu dimsLowRows=16)
 COLS = 16   # Load kPa columns
@@ -96,6 +96,11 @@ class MapTable(QTableWidget):
                 item.setTextAlignment(Qt.AlignCenter)
                 self.setItem(r, c, item)
         self.blockSignals(False)
+
+    def set_axis_labels(self, rpm_labels: list, load_labels: list):
+        """Update row/column headers — call after load_data() when ECU version is known."""
+        self.setVerticalHeaderLabels([str(v) for v in rpm_labels])
+        self.setHorizontalHeaderLabels([str(v) for v in load_labels])
 
     def load_data(self, data: list):
         """Load flat array (ROWS*COLS bytes) into table and apply colours."""
