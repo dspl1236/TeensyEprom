@@ -1,5 +1,5 @@
 """
-ecu_profiles.py  —  7A 20v Tuner  v1.3.0
+ecu_profiles.py  —  7A 20v Tuner  v1.4.0
 =========================================
 ECU version detection, complete map address tables, and hardware profiles.
 
@@ -12,15 +12,76 @@ SUPPORTED ECU VERSIONS
 
 MAP ADDRESS DERIVATION
 ======================
-Source: 034 Motorsport RIP Chip .ecu definition files
+Source: 034 Motorsport RIP Chip .ecu definition files  +  Java decompilation of
+        ECUGUI.jar / CustomizedStore.jar  (034EFI_Rip_Chip_1_0_0_Hitachi.msi)
+
   7A_Early_Generic_1.06.ecu  (266B)
   7A_Late_Generic_1.01.ecu   (266D)
 
-Address formula: EPROM_addr = dataHighStart_field * 256
+.034 FILE FORMAT (CRITICAL)
+============================
+  .034 files are NOT raw EPROM binary dumps!  Every byte is bit-scrambled by
+  034EFI RIP Chip software before writing to disk, using the following transform:
 
-CONFIRMED MAP ADDRESSES
-=======================
-  266B (8 maps):
+    algOne(byte):
+      step 1 — algZero: swap odd/even bits
+        t1 = byte & 0xAA        # isolate even bits  (positions 7,5,3,1)
+        t2 = t1 >> 1            # shift them down
+        t3 = byte & 0x55        # isolate odd bits   (positions 6,4,2,0)
+        t4 = t3 << 1            # shift them up
+        step1 = (t2 | t4) & 0xFF
+      step 2 — bSwap: swap high/low nibbles
+        result = ((step1 >> 4) | (step1 << 4)) & 0xFF
+
+  To recover the native ECU ROM bytes:  native_byte = algOne(file_byte)
+  (algOne is its own inverse — applying it twice returns the original byte)
+
+CONFIRMED MAP ADDRESSES — 266D (from Java reflection dump of 7A_Late_Generic_1.01.ecu)
+========================================================================================
+  All addresses are in NATIVE ROM space (i.e. after unscrambling algOne transform)
+
+  0x0000  Primary Fueling         16x16 = 256 bytes  (rows=RPM, cols=Load kPa)
+  0x0100  Primary Timing          16x16 = 256 bytes
+  0x0250  RPM axis (y-axis)       16 bytes  factor=25.0,   offset=0.0
+  0x0260  Load axis (x-axis)      16 bytes  factor=0.3922, offset=0.0
+  0x0660  CL Fueling Load         16 bytes (1-D)           — dataLowStart=1632
+  0x0640  CL Load axis RPM        16 bytes                 — xAxisLowStart=1616
+  0x07E1  CL RPM Limit            1 byte (scalar)
+  0x0E30  Decel Cutoff            16 bytes (1-D)           — dataLowStart=3632
+  0x0E20  Decel Cutoff axis RPM   16 bytes                 — xAxisLowStart=3616
+  0x1000  Timing Knock Safety     16x16 = 256 bytes
+
+  Timing axis addresses (shared with Primary Timing):
+  0x0270  RPM axis for Timing maps   — yAxisLowStart=624
+  0x0280  Load axis for Timing maps  — xAxisLowStart=640
+
+DISPLAY FORMULAS — 266D (confirmed from decompiled ArrayStuff.factorAndOffset)
+===============================================================================
+  formula:  display = native_byte * dataFactor + dataOffset
+
+  Primary Fueling  (dataSigned=True, dataFactor=1.0, dataOffset=128.0):
+    signed_byte = native_byte if native_byte < 128 else native_byte - 256
+    display     = signed_byte + 128      range: 0–255 (stock map: ~40–123)
+    storage     = round(display - 128)   then store as 2's complement byte
+
+  Primary Timing   (dataSigned=False, dataFactor=1.0, dataOffset=0.0):
+    display = native_byte                (degrees BTDC, stock map: ~2–38°)
+
+  RPM axis:   display = native_byte * 25   (stock: 600–6300 RPM)
+  Load axis:  display = native_byte * 0.3922  (kPa, stock: ~12.6–100.0)
+
+  NOTE: The axes ARE stored in ROM (not hardcoded). However for the Teensy
+        emulator workflow the axis values are read from the ROM file itself.
+
+STOCK MAP DISPLAY RANGES (verified against decoded 034_-_893906266D_Stock.034)
+================================================================================
+  Fuel map:   40 (WOT decel / low RPM light load) to 123 (high-load enrichment)
+  Timing map:  2 (idle / high load retard)         to  38 (part-load advance)
+  RPM axis:  600 800 1000 1250 1500 1750 2000 2250 2500 2750 3000 3500 4000 5000 6000 6300
+  Load axis: 12.6 18.8 23.5 28.2 32.9 38.8 44.7 50.6 56.9 63.1 69.4 75.7 82.0 88.2 94.5 100.0
+
+CONFIRMED MAP ADDRESSES — 266B (8 maps):
+=========================================
     0x0000  Fueling Map             16x16 = 256 bytes
     0x0100  Timing Map              16x16 = 256 bytes
     0x0200  RPM / Load axes         16 bytes each
@@ -29,17 +90,6 @@ CONFIRMED MAP ADDRESSES
     0x0E00  Decel Cutoff axis       16 bytes
     0x1000  Timing Map Knock        16x16 = 256 bytes
     MAF Linearization 64 bytes also at 0x0200 region
-
-  266D (7 maps):
-    0x0000  Primary Fueling         18x16 = 288 bytes  (rows=RPM, cols=Load kPa)
-    0x0120  Primary Timing          18x16 = 288 bytes
-    0x0240  RPM axis (Y)            18 x 2-byte BE words  @ 0x0260
-    0x0250  Load axis (X)           16 x 1-byte values   @ 0x0250
-    0x0600  CL Fueling Load         16 bytes (1-D, axis = RPM)
-    0x0700  CL RPM Limit            1 byte (scalar)
-    0x0701  Fuel Injector Scaler    1 byte (scalar)
-    0x0E00  Decel Cutoff            16 bytes (1-D, axis = RPM)
-    0x1000  Timing Knock Safety     18x16 = 288 bytes
 
 KNOWN ROM CRC32 FINGERPRINTS (first 32KB)
 =========================================
@@ -55,6 +105,93 @@ RESET VECTOR FINGERPRINTS (bytes at 0x7FFE-0x7FFF)
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 import zlib
+
+
+# ---------------------------------------------------------------------------
+# .034 file unscramble  (mandatory before reading any map data)
+# Every byte in a .034 file is scrambled by algOne().  Apply to each byte
+# to recover the native ECU ROM.  algOne is its own inverse.
+# ---------------------------------------------------------------------------
+
+def _alg_zero(b: int) -> int:
+    t1 = b & 0xAA
+    t2 = t1 >> 1
+    t3 = b & 0x55
+    t4 = (t3 << 1) & 0xFF
+    return (t2 | t4) & 0xFF
+
+def _b_swap(x: int) -> int:
+    return ((x >> 4) | ((x << 4) & 0xFF)) & 0xFF
+
+def unscramble_byte(b: int) -> int:
+    """Undo 034 EFI bit-scramble: algOne(b) = bSwap(algZero(b))."""
+    return _b_swap(_alg_zero(b))
+
+def unscramble_rom(data: bytes) -> bytes:
+    """Unscramble a full .034 file to native ECU ROM bytes."""
+    return bytes(unscramble_byte(b) for b in data)
+
+
+# ---------------------------------------------------------------------------
+# 266D axis breakpoints — READ FROM ROM (addresses from .ecu definition)
+# These defaults are the stock values decoded from 034_-_893906266D_Stock.034
+# ---------------------------------------------------------------------------
+
+RPM_AXIS_ADDR_266D  = 0x0250   # yAxisLowStart=592,  factor=25.0
+LOAD_AXIS_ADDR_266D = 0x0260   # xAxisLowStart=608,  factor=0.3922
+
+RPM_AXIS_FACTOR_266D  = 25.0
+LOAD_AXIS_FACTOR_266D = 0.3922
+
+# Stock defaults (decoded from the stock 034 ROM)
+RPM_AXIS_266D  = [600, 800, 1000, 1250, 1500, 1750, 2000, 2250,
+                  2500, 2750, 3000, 3500, 4000, 5000, 6000, 6300]
+
+LOAD_AXIS_266D = [12.6, 18.8, 23.5, 28.2, 32.9, 38.8, 44.7, 50.6,
+                  56.9, 63.1, 69.4, 75.7, 82.0, 88.2, 94.5, 100.0]  # kPa
+
+
+def read_rpm_axis_from_rom(native_rom: bytes) -> list:
+    """Read 16 RPM breakpoints from native ROM bytes."""
+    return [native_rom[RPM_AXIS_ADDR_266D + i] * RPM_AXIS_FACTOR_266D
+            for i in range(16)]
+
+def read_load_axis_from_rom(native_rom: bytes) -> list:
+    """Read 16 Load (kPa) breakpoints from native ROM bytes."""
+    return [round(native_rom[LOAD_AXIS_ADDR_266D + i] * LOAD_AXIS_FACTOR_266D, 1)
+            for i in range(16)]
+
+
+# ---------------------------------------------------------------------------
+# 266D Primary Fueling display formula  (confirmed from decompiled source)
+#   .034 file byte  →  unscramble_byte()  →  native_byte
+#   native_byte is signed (two's complement); dataFactor=1.0, dataOffset=128.0
+#   display = signed(native_byte) + 128
+#   storage: native_byte = round(display - 128)  stored as uint8 two's complement
+# ---------------------------------------------------------------------------
+
+FUEL_DATA_FACTOR  = 1.0
+FUEL_DATA_OFFSET  = 128.0
+FUEL_DATA_SIGNED  = True
+
+
+def raw_to_display(raw: int) -> float:
+    """Convert native (unscrambled) ECU byte to display fuel value.
+
+    raw: 0-255 unsigned byte from the unscrambled ROM
+    Returns display value (stock range: ~40-123)
+    """
+    signed = raw if raw < 128 else raw - 256
+    return float(signed + int(FUEL_DATA_OFFSET))
+
+
+def display_to_raw(display: float) -> int:
+    """Convert display fuel value back to native ROM byte (0-255 uint8)."""
+    native_signed = round(display - FUEL_DATA_OFFSET)
+    # clamp to signed byte range
+    native_signed = max(-128, min(127, native_signed))
+    # convert to uint8
+    return native_signed & 0xFF
 
 
 # ---------------------------------------------------------------------------
@@ -146,45 +283,47 @@ ECU_MAPS: Dict[str, List[MapDef]] = {
     "266D": [
         MapDef(
             name="Primary Fueling",
-            data_addr=0x0000, xaxis_addr=0x0250, yaxis_addr=0x0260,
-            cols=16, rows=18,
-            description="Primary fuel map  (RPM × Load kPa = injector pulse width scalar)"
+            data_addr=0x0000, xaxis_addr=0x0260, yaxis_addr=0x0250,
+            cols=16, rows=16,
+            description="Primary fuel map  (RPM × Load kPa).  "
+                        "display = signed(native_byte) + 128  (stock range: 40–123)"
         ),
         MapDef(
             name="Primary Timing",
-            data_addr=0x0120, xaxis_addr=0x0250, yaxis_addr=0x0260,
-            cols=16, rows=18,
-            description="Primary ignition advance map  (degrees BTDC)"
+            data_addr=0x0100, xaxis_addr=0x0280, yaxis_addr=0x0270,
+            cols=16, rows=16,
+            description="Primary ignition advance map  (degrees BTDC, stock: 2–38°)"
         ),
         MapDef(
             name="Timing Knock Safety",
-            data_addr=0x1000, xaxis_addr=0x0250, yaxis_addr=0x0260,
-            cols=16, rows=18,
+            data_addr=0x1000, xaxis_addr=0x0280, yaxis_addr=0x0270,
+            cols=16, rows=16,
             description="Knock safety timing map -- ECU falls back here on knock detection"
         ),
         MapDef(
             name="CL Fueling Load Threshold",
-            data_addr=0x0600, xaxis_addr=0x0600, yaxis_addr=0x0000,
+            data_addr=0x0660, xaxis_addr=0x0640, yaxis_addr=0x0000,
             cols=16, rows=1,
             description="Closed-loop O2: disable above this load threshold per RPM"
         ),
         MapDef(
             name="CL Fueling RPM Limit",
-            data_addr=0x0700, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            data_addr=0x07E1, xaxis_addr=0x0000, yaxis_addr=0x0000,
             cols=1, rows=1,
-            description="Disable closed-loop O2 feedback above this RPM"
+            description="Disable closed-loop O2 feedback above this RPM  (raw * 25 = RPM)"
         ),
         MapDef(
             name="Fuel Injector Scaler",
-            data_addr=0x0701, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            data_addr=0x0000, xaxis_addr=0x0000, yaxis_addr=0x0000,
             cols=1, rows=1,
-            description="Global injector scaler constant (bigger injector = smaller value)"
+            description="Global injector scaler constant (bigger injector = smaller value)",
+            editable=False  # dataLowStart=0 in .ecu — location TBD
         ),
         MapDef(
             name="Deceleration Cutoff",
-            data_addr=0x0E00, xaxis_addr=0x0E00, yaxis_addr=0x0000,
+            data_addr=0x0E30, xaxis_addr=0x0E20, yaxis_addr=0x0000,
             cols=16, rows=1,
-            description="Injector decel cutoff per RPM row"
+            description="Injector decel cutoff per RPM row  (factor=0.3922)"
         ),
     ],
 }

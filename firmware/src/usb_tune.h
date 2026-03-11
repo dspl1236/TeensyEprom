@@ -52,11 +52,11 @@ void load_rom_from_sd(const char* filename);
 void save_tune_to_sd(const char* filename);
 
 // ── ROM address constants (893906266D confirmed) ──────────────────────────
-#define FUEL_MAP_ADDR    0x0000   // Primary Fueling  — 18×16 = 288 bytes
-#define TIMING_MAP_ADDR  0x0120   // Primary Timing   — 18×16 = 288 bytes (0x0000 + 288)
-#define MAP_ROWS         18       // RPM breakpoints
+#define FUEL_MAP_ADDR    0x0000   // Primary Fueling  — 16×16 = 256 bytes
+#define TIMING_MAP_ADDR  0x0100   // Primary Timing   — 16×16 = 256 bytes (0x0000 + 256)
+#define MAP_ROWS         16       // RPM breakpoints  (confirmed: 7A_Late_Generic_1.01.ecu dimsLowRows=16)
 #define MAP_COLS         16       // Load (kPa) breakpoints
-#define MAP_SIZE         (MAP_ROWS * MAP_COLS)   // 288 bytes
+#define MAP_SIZE         (MAP_ROWS * MAP_COLS)   // 256 bytes
 
 // ── SD directory listing helper (implement in your sd/file module) ─────────
 // Returns comma-separated list of .bin files on SD root into buf.

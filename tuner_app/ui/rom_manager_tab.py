@@ -2,7 +2,7 @@
 ui/rom_manager_tab.py
 ROM Manager — Download from Teensy SD, Upload to Teensy SD,
 Offline map editing, corrections toggle.
-v1.3.0
+v1.4.0
 """
 
 import os
@@ -19,11 +19,17 @@ from PyQt5.QtGui import QColor, QBrush
 
 # Reuse the map table widget from map editor
 from ui.map_editor_tab import MapTable, ROWS, COLS
+from ecu_profiles import (
+    unscramble_rom, raw_to_display, display_to_raw,
+    read_rpm_axis_from_rom, read_load_axis_from_rom,
+    RPM_AXIS_266D, LOAD_AXIS_266D,
+    FUEL_DATA_FACTOR, FUEL_DATA_OFFSET, FUEL_DATA_SIGNED,
+)
 
-FUEL_MAP_ADDR   = 0x0000   # 266D Primary Fueling  — 18×16 = 288 bytes
-TIMING_MAP_ADDR = 0x0120   # 266D Primary Timing   — starts after fuel map (0x0000 + 288)
+FUEL_MAP_ADDR   = 0x0000   # 266D Primary Fueling  — 16×16 = 256 bytes (native ROM space)
+TIMING_MAP_ADDR = 0x0100   # 266D Primary Timing   — 16×16 = 256 bytes (native ROM space)
 ROM_SIZE        = 65536
-MAP_SIZE        = ROWS * COLS   # 288 bytes per map (18 RPM rows × 16 Load cols)
+MAP_SIZE        = ROWS * COLS   # 256 bytes per map (16 RPM rows × 16 Load cols)
 
 
 def crc32(data: bytes) -> int:
@@ -263,42 +269,65 @@ class OfflineRomEditor(QWidget):
     # ── File I/O ──────────────────────────────────────────────────────────────
 
     def load_data(self, data: bytes, filepath: str = None):
-        """Load ROM bytes — called from download or open file."""
+        """Load ROM bytes — called from download or open file.
+
+        Handles both:
+          - Raw .bin files from Teensy (native ECU bytes, no scrambling)
+          - .034 files from 034EFI RIP Chip tool (bit-scrambled; auto-detected by extension)
+        """
+        # Auto-detect and unscramble .034 files
+        is_034 = filepath and filepath.lower().endswith('.034')
+        if is_034:
+            data = unscramble_rom(data)
+
         if len(data) < ROM_SIZE:
             data = data + bytes(ROM_SIZE - len(data))
         self._romdata = bytearray(data[:ROM_SIZE])
         self._filepath = filepath
         self._dirty   = False
+        self._is_034  = is_034
 
-        fuel_data   = list(self._romdata[FUEL_MAP_ADDR:FUEL_MAP_ADDR + MAP_SIZE])
+        # Decode fuel map: signed byte + 128 → display value
+        raw_fuel = list(self._romdata[FUEL_MAP_ADDR:FUEL_MAP_ADDR + MAP_SIZE])
+        fuel_display = [raw_to_display(b) for b in raw_fuel]
+
+        # Decode timing map: unsigned byte = degrees BTDC (factor=1.0, offset=0.0)
         timing_data = list(self._romdata[TIMING_MAP_ADDR:TIMING_MAP_ADDR + MAP_SIZE])
 
-        self.fuel_table.load_data(fuel_data)
+        self.fuel_table.load_data([int(v) for v in fuel_display])
         self.timing_table.load_data(timing_data)
 
         name = os.path.basename(filepath) if filepath else "downloaded ROM"
-        self.lbl_file.setText(f"  {name}  —  {len(data):,} bytes")
+        suffix = "  [.034 unscrambled]" if is_034 else ""
+        self.lbl_file.setText(f"  {name}{suffix}  —  {len(data):,} bytes")
         self.lbl_file.setStyleSheet("color: #2dff6e; font-size: 11px;")
         self.lbl_dirty.setText("")
         self.btn_save.setEnabled(True)
         self.btn_saveas.setEnabled(True)
 
     def get_data(self) -> bytes:
-        """Get current ROM bytes with map edits applied."""
-        # Flush table edits back into romdata
+        """Get current ROM bytes with map edits applied.
+
+        Fuel map cells hold display values (signed + 128 formula).
+        Convert back to native ROM bytes before writing to romdata.
+        """
         for r in range(ROWS):
             for c in range(COLS):
                 fi = self.fuel_table.item(r, c)
                 ti = self.timing_table.item(r, c)
                 if fi:
                     try:
-                        self._romdata[FUEL_MAP_ADDR + r * COLS + c] = int(fi.text())
-                    except ValueError:
+                        # Fuel: display value → native signed+128 byte
+                        display_val = float(fi.text())
+                        native = display_to_raw(display_val)
+                        self._romdata[FUEL_MAP_ADDR + r * COLS + c] = native
+                    except (ValueError, TypeError):
                         pass
                 if ti:
                     try:
-                        self._romdata[TIMING_MAP_ADDR + r * COLS + c] = int(ti.text())
-                    except ValueError:
+                        # Timing: unsigned degrees BTDC, no conversion needed
+                        self._romdata[TIMING_MAP_ADDR + r * COLS + c] = int(float(ti.text()))
+                    except (ValueError, TypeError):
                         pass
         return bytes(self._romdata)
 
