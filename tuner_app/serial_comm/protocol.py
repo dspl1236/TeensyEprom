@@ -15,8 +15,8 @@ TEENSY → PC (streaming, 10Hz):
 
 PC → TEENSY (commands):
   CMD:PING\n                          → TEENSY replies: ACK:PING\n
-  CMD:GET_FUEL_MAP\n                  → TEENSY replies: MAP:FUEL,<256 comma-separated bytes>\n
-  CMD:GET_TIMING_MAP\n                → TEENSY replies: MAP:TIMING,<256 comma-separated bytes>\n
+  CMD:GET_FUEL_MAP\n                  → TEENSY replies: MAP:FUEL,<288 comma-separated bytes>\n
+  CMD:GET_TIMING_MAP\n                → TEENSY replies: MAP:TIMING,<288 comma-separated bytes>\n
   CMD:SET_CELL,fuel,row,col,value\n   → TEENSY replies: ACK:SET_CELL\n
   CMD:SET_CELL,timing,row,col,value\n → TEENSY replies: ACK:SET_CELL\n
   CMD:LOAD_ROM,filename\n             → TEENSY replies: ACK:LOAD_ROM or ERR:LOAD_ROM\n
@@ -34,6 +34,10 @@ import time
 import queue
 from dataclasses import dataclass, field
 from typing import Optional, List, Callable
+
+# Map dimensions — must match map_editor_tab.py
+from ui.map_editor_tab import ROWS, COLS
+MAP_SIZE = ROWS * COLS   # 288 bytes (18×16)
 
 
 # ── Teensy USB IDs ─────────────────────────────────────────────────────────
@@ -261,8 +265,10 @@ class TeensySerial:
             vals = line[9:].split(",")
             try:
                 data = [int(v) for v in vals if v.strip()]
-                if len(data) == 256 and self.on_fuel_map:
+                if len(data) == MAP_SIZE and self.on_fuel_map:
                     self.on_fuel_map(data)
+                elif data:
+                    self._log(f"Bad fuel map length: {len(data)} (expected {MAP_SIZE})")
             except ValueError:
                 self._log("Bad fuel map data")
 
@@ -270,8 +276,10 @@ class TeensySerial:
             vals = line[11:].split(",")
             try:
                 data = [int(v) for v in vals if v.strip()]
-                if len(data) == 256 and self.on_timing_map:
+                if len(data) == MAP_SIZE and self.on_timing_map:
                     self.on_timing_map(data)
+                elif data:
+                    self._log(f"Bad timing map length: {len(data)} (expected {MAP_SIZE})")
             except ValueError:
                 self._log("Bad timing map data")
 

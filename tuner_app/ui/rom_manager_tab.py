@@ -20,9 +20,10 @@ from PyQt5.QtGui import QColor, QBrush
 # Reuse the map table widget from map editor
 from ui.map_editor_tab import MapTable, ROWS, COLS
 
-FUEL_MAP_ADDR   = 0x0000
-TIMING_MAP_ADDR = 0x1000
+FUEL_MAP_ADDR   = 0x0000   # 266D Primary Fueling  — 18×16 = 288 bytes
+TIMING_MAP_ADDR = 0x0120   # 266D Primary Timing   — starts after fuel map (0x0000 + 288)
 ROM_SIZE        = 65536
+MAP_SIZE        = ROWS * COLS   # 288 bytes per map (18 RPM rows × 16 Load cols)
 
 
 def crc32(data: bytes) -> int:
@@ -237,7 +238,7 @@ class OfflineRomEditor(QWidget):
         fuel_widget = QWidget()
         fl = QVBoxLayout(fuel_widget)
         fl.setContentsMargins(0, 0, 0, 0)
-        fl.addWidget(QLabel("Fuel Map — 16×16  |  Rows = Load (MAP kPa)  |  Cols = RPM",
+        fl.addWidget(QLabel("Fuel Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
                     styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
         self.fuel_table = MapTable("fuel")
         self.fuel_table._teensy = None
@@ -248,7 +249,7 @@ class OfflineRomEditor(QWidget):
         timing_widget = QWidget()
         tl = QVBoxLayout(timing_widget)
         tl.setContentsMargins(0, 0, 0, 0)
-        tl.addWidget(QLabel("Timing Map — 16×16  |  Rows = Load (MAP kPa)  |  Cols = RPM",
+        tl.addWidget(QLabel("Timing Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
                     styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
         self.timing_table = MapTable("timing")
         self.timing_table._teensy = None
@@ -269,8 +270,8 @@ class OfflineRomEditor(QWidget):
         self._filepath = filepath
         self._dirty   = False
 
-        fuel_data   = list(self._romdata[FUEL_MAP_ADDR:FUEL_MAP_ADDR + 256])
-        timing_data = list(self._romdata[TIMING_MAP_ADDR:TIMING_MAP_ADDR + 256])
+        fuel_data   = list(self._romdata[FUEL_MAP_ADDR:FUEL_MAP_ADDR + MAP_SIZE])
+        timing_data = list(self._romdata[TIMING_MAP_ADDR:TIMING_MAP_ADDR + MAP_SIZE])
 
         self.fuel_table.load_data(fuel_data)
         self.timing_table.load_data(timing_data)
