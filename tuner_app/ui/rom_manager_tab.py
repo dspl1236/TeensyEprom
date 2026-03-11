@@ -198,16 +198,111 @@ class UploadWorker(QThread):
 
 # ── Offline ROM editor (no connection needed) ─────────────────────────────────
 
+class _ScalarEdit(QWidget):
+    """Simple spin-like row for editing a single integer scalar value."""
+    from PyQt5.QtCore import pyqtSignal as _sig
+    value_changed = _sig()
+
+    def __init__(self, parent=None):
+        from PyQt5.QtWidgets import QHBoxLayout, QSpinBox
+        super().__init__(parent)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        self._spin = QSpinBox()
+        self._spin.setRange(0, 65535)
+        self._spin.setFixedWidth(90)
+        self._spin.setStyleSheet(
+            "QSpinBox { background:#1a2530; color:#e0eaf4; border:1px solid #2a3a4a; "
+            "padding:2px 4px; font-size:12px; }"
+        )
+        self._spin.valueChanged.connect(lambda _: self.value_changed.emit())
+        lay.addWidget(self._spin)
+
+    def set_value(self, v): self._spin.setValue(int(v))
+    def get_value(self): return self._spin.value()
+
+
+def _separator():
+    from PyQt5.QtWidgets import QFrame
+    f = QFrame()
+    f.setFrameShape(QFrame.HLine)
+    f.setStyleSheet("color: #2a3a4a;")
+    return f
+
+
+class _OneDTable(QWidget):
+    """Compact 1-row or 1-column table for 1-D maps and MAF linearization."""
+    from PyQt5.QtCore import pyqtSignal as _sig
+    value_changed = _sig()
+
+    def __init__(self, count: int, sixteen_bit: bool = False, parent=None):
+        from PyQt5.QtWidgets import QHBoxLayout, QScrollArea, QLineEdit, QSizePolicy
+        super().__init__(parent)
+        self._count = count
+        self._cells = []
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setFixedHeight(52)
+
+        inner = QWidget()
+        row = QHBoxLayout(inner)
+        row.setContentsMargins(2, 2, 2, 2)
+        row.setSpacing(2)
+
+        max_val = 65535 if sixteen_bit else 255
+        for _ in range(count):
+            cell = QLineEdit("0")
+            cell.setFixedWidth(52 if sixteen_bit else 38)
+            cell.setFixedHeight(30)
+            cell.setAlignment(Qt.AlignCenter)
+            cell.setStyleSheet(
+                "QLineEdit { background:#1a2530; color:#e0eaf4; "
+                "border:1px solid #2a3a4a; font-size:10px; }"
+            )
+            cell.textChanged.connect(lambda _: self.value_changed.emit())
+            row.addWidget(cell)
+            self._cells.append(cell)
+        row.addStretch()
+
+        scroll.setWidget(inner)
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(scroll)
+
+    def load_values(self, values):
+        for i, v in enumerate(values[:self._count]):
+            self._cells[i].blockSignals(True)
+            self._cells[i].setText(str(v))
+            self._cells[i].blockSignals(False)
+
+    def get_values(self):
+        result = []
+        for cell in self._cells:
+            try:
+                result.append(float(cell.text()))
+            except ValueError:
+                result.append(0)
+        return result
+
+
 class OfflineRomEditor(QWidget):
     """
-    Load a .bin file from disk, view/edit fuel and timing maps,
-    save changes back to disk. No Teensy connection required.
+    Load a .bin / .034 file, view and edit all ECU maps, save as new .bin.
+
+    Tabs (version-aware):
+      Both:  Fuel Map  |  Timing Map  |  Knock Timing  |  Scalars & 1-D
+      266B only:  MAF Linearization
+    Save philosophy: Save As only — never silently overwrite the source file.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._filepath = None
-        self._romdata  = bytearray(ROM_SIZE)
-        self._dirty    = False
+        self._filepath    = None
+        self._save_path   = None
+        self._romdata     = bytearray(ROM_SIZE)
+        self._dirty       = False
+        self._ecu_version = "266D"
         self._build_ui()
 
     def _build_ui(self):
@@ -215,50 +310,42 @@ class OfflineRomEditor(QWidget):
         root.setContentsMargins(8, 8, 8, 8)
         root.setSpacing(6)
 
-        # ── Toolbar ───────────────────────────────────────────────────────
+        # Toolbar
         toolbar = QHBoxLayout()
-
         self.btn_open   = QPushButton("📂  Open .bin")
-        self.btn_save   = QPushButton("💾  Save .bin")
-        self.btn_saveas = QPushButton("💾  Save As...")
+        self.btn_saveas = QPushButton("💾  Save As .bin...")
         self.lbl_file   = QLabel("No file loaded  —  open a .bin or download from Teensy")
         self.lbl_file.setStyleSheet("color: #3d5068; font-size: 11px;")
         self.lbl_dirty  = QLabel("")
         self.lbl_dirty.setStyleSheet("color: #ff9900; font-size: 11px;")
-
-        self.btn_save.setEnabled(False)
         self.btn_saveas.setEnabled(False)
-
         self.btn_open.clicked.connect(self._open_file)
-        self.btn_save.clicked.connect(self._save_file)
         self.btn_saveas.clicked.connect(self._save_as_file)
-
         toolbar.addWidget(self.btn_open)
-        toolbar.addWidget(self.btn_save)
         toolbar.addWidget(self.btn_saveas)
         toolbar.addSpacing(12)
         toolbar.addWidget(self.lbl_file)
         toolbar.addWidget(self.lbl_dirty)
         toolbar.addStretch()
 
-        # ── Map tabs ──────────────────────────────────────────────────────
+        # Map tabs
         self.map_tabs = QTabWidget()
 
+        # Tab 0: Fuel Map
         fuel_widget = QWidget()
-        fl = QVBoxLayout(fuel_widget)
-        fl.setContentsMargins(0, 0, 0, 0)
-        fl.addWidget(QLabel("Fuel Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
-                    styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        fl = QVBoxLayout(fuel_widget); fl.setContentsMargins(0,0,0,0)
+        self.lbl_fuel_info = QLabel("", styleSheet="color:#3d5068; font-size:11px; padding:4px 0;")
+        fl.addWidget(self.lbl_fuel_info)
         self.fuel_table = MapTable("fuel")
         self.fuel_table._teensy = None
         self.fuel_table.itemChanged.connect(self._on_edit)
         fl.addWidget(self.fuel_table)
         self.map_tabs.addTab(fuel_widget, "Fuel Map")
 
+        # Tab 1: Timing Map
         timing_widget = QWidget()
-        tl = QVBoxLayout(timing_widget)
-        tl.setContentsMargins(0, 0, 0, 0)
-        tl.addWidget(QLabel("Timing Map — 18×16  |  Rows = RPM  |  Cols = Load (MAP kPa)",
+        tl = QVBoxLayout(timing_widget); tl.setContentsMargins(0,0,0,0)
+        tl.addWidget(QLabel("Timing Map — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  degrees BTDC",
                     styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
         self.timing_table = MapTable("timing")
         self.timing_table._teensy = None
@@ -266,122 +353,226 @@ class OfflineRomEditor(QWidget):
         tl.addWidget(self.timing_table)
         self.map_tabs.addTab(timing_widget, "Timing Map")
 
+        # Tab 2: Knock Timing
+        knock_widget = QWidget()
+        kl = QVBoxLayout(knock_widget); kl.setContentsMargins(0,0,0,0)
+        kl.addWidget(QLabel(
+            "Knock Safety Timing — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  degrees BTDC\n"
+            "ECU switches to this map on knock detection.",
+            styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        self.knock_table = MapTable("timing")
+        self.knock_table._teensy = None
+        self.knock_table.itemChanged.connect(self._on_edit)
+        kl.addWidget(self.knock_table)
+        self.map_tabs.addTab(knock_widget, "Knock Timing")
+
+        # Tab 3: Scalars & 1-D
+        scalars_widget = QWidget()
+        sl = QVBoxLayout(scalars_widget)
+        sl.setContentsMargins(8,8,8,8); sl.setSpacing(10)
+        sl.addWidget(QLabel("Scalar Values  —  single-byte parameters",
+                    styleSheet="color:#aabbcc; font-size:12px; font-weight:bold; padding:4px 0;"))
+
+        inj_row = QHBoxLayout()
+        self.lbl_inj_info = QLabel("", styleSheet="color:#3d5068; font-size:10px;")
+        inj_row.addWidget(QLabel("Injection Scaler  (raw byte):", styleSheet="color:#aabbcc; min-width:200px;"))
+        self.spin_inj = _ScalarEdit()
+        self.spin_inj.setToolTip(
+            "Injection Scaler — raw byte stored at 0x077E\n"
+            "display = raw × 0.3922\n"
+            "Larger injectors → smaller value\n"
+            "Larger MAF sensor → larger value")
+        self.spin_inj.value_changed.connect(self._on_edit)
+        inj_row.addWidget(self.spin_inj)
+        inj_row.addWidget(self.lbl_inj_info)
+        inj_row.addStretch()
+        sl.addLayout(inj_row)
+
+        cl_row = QHBoxLayout()
+        cl_row.addWidget(QLabel("CL Disable RPM  (×25):", styleSheet="color:#aabbcc; min-width:200px;"))
+        self.spin_cl_rpm = _ScalarEdit()
+        self.spin_cl_rpm.setToolTip(
+            "Disable O2 closed-loop above this RPM\n"
+            "Stored as raw × 25  →  enter the RPM value directly")
+        self.spin_cl_rpm.value_changed.connect(self._on_edit)
+        cl_row.addWidget(self.spin_cl_rpm)
+        cl_row.addWidget(QLabel("RPM", styleSheet="color:#3d5068;"))
+        cl_row.addStretch()
+        sl.addLayout(cl_row)
+
+        sl.addSpacing(8)
+        sl.addWidget(_separator())
+        sl.addWidget(QLabel(
+            "Decel Fuel Cutoff — 1×16  |  Axis=RPM  |  Values=Load threshold kPa\n"
+            "Injectors cut below this load during deceleration.",
+            styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        self.decel_table = _OneDTable(16)
+        self.decel_table.value_changed.connect(self._on_edit)
+        sl.addWidget(self.decel_table)
+
+        sl.addSpacing(8)
+        sl.addWidget(QLabel(
+            "Closed-Loop Load Limit — 1×16  |  Axis=RPM  |  O2 feedback disabled above this load.",
+            styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        self.cl_load_table = _OneDTable(16)
+        self.cl_load_table.value_changed.connect(self._on_edit)
+        sl.addWidget(self.cl_load_table)
+        sl.addStretch()
+        self.map_tabs.addTab(scalars_widget, "Scalars & 1-D")
+
+        # Tab 4: MAF Linearization (266B only)
+        self.maf_widget = QWidget()
+        ml = QVBoxLayout(self.maf_widget); ml.setContentsMargins(0,0,0,0)
+        ml.addWidget(QLabel(
+            "MAF Linearization — 1×64  |  16-bit big-endian values  |  266B ONLY\n"
+            "Maps MAF sensor frequency to load signal. Edit with caution.",
+            styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        self.maf_table = _OneDTable(64, sixteen_bit=True)
+        self.maf_table.value_changed.connect(self._on_edit)
+        ml.addWidget(self.maf_table)
+        self.maf_tab_idx = self.map_tabs.addTab(self.maf_widget, "MAF Lin (266B)")
+
         root.addLayout(toolbar)
         root.addWidget(self.map_tabs, 1)
 
-    # ── File I/O ──────────────────────────────────────────────────────────────
+    # File I/O
 
     def load_data(self, data: bytes, filepath: str = None):
-        """Load ROM bytes — called from download or open file.
-
-        Handles both:
-          - Raw .bin files from Teensy (native ECU bytes, no scrambling)
-          - .034 files from 034EFI RIP Chip tool (bit-scrambled; auto-detected by extension)
-        Automatically detects 266B vs 266D and applies the correct fuel formula.
-        """
-        # Auto-detect and unscramble .034 files
         is_034 = filepath and filepath.lower().endswith('.034')
         if is_034:
             data = unscramble_rom(data)
-
         if len(data) < ROM_SIZE:
             data = data + bytes(ROM_SIZE - len(data))
-        self._romdata = bytearray(data[:ROM_SIZE])
+        self._romdata  = bytearray(data[:ROM_SIZE])
         self._filepath = filepath
-        self._dirty   = False
-        self._is_034  = is_034
+        self._save_path = None
+        self._dirty    = False
+        self._is_034   = is_034
 
-        # Detect ECU version for correct fuel formula
         result = detect_ecu_version(self._romdata[:32768])
         self._ecu_version = result.version
         is_266b = (self._ecu_version == "266B")
+        rom = self._romdata
 
-        # Decode fuel map with version-appropriate formula
-        raw_fuel = list(self._romdata[FUEL_MAP_ADDR:FUEL_MAP_ADDR + MAP_SIZE])
+        # Fuel Map
+        raw_fuel = list(rom[0x0000:0x0000 + MAP_SIZE])
         if is_266b:
-            from ecu_profiles import raw_to_lambda
             fuel_display = [raw_to_lambda(b) for b in raw_fuel]
-            fuel_label = "Fuel Map (Lambda) — 266B  |  display = signed*0.007813 + 1.0  |  1.000=stoich"
+            self.lbl_fuel_info.setText(
+                "Fuel Map (Lambda) — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
+                "display=signed×0.007813+1.0  |  1.000=stoich  |  stock: 0.625–0.867")
         else:
             fuel_display = [raw_to_display(b) for b in raw_fuel]
-            fuel_label = "Fuel Map — 266D  |  display = signed + 128  |  Stock: 40–123"
-
-        # Timing map: unsigned bytes = degrees BTDC (both versions)
-        timing_data = list(self._romdata[TIMING_MAP_ADDR:TIMING_MAP_ADDR + MAP_SIZE])
-
+            self.lbl_fuel_info.setText(
+                "Fuel Map — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
+                "display=signed+128  |  stock: 40–123")
         self.fuel_table.load_data([round(v, 3) if is_266b else int(v) for v in fuel_display])
-        self.timing_table.load_data(timing_data)
 
-        # Verify checksum
-        cs_ok = verify_checksum(bytes(self._romdata[:32768]), self._ecu_version)
+        # Timing Map
+        self.timing_table.load_data(list(rom[0x0100:0x0100 + MAP_SIZE]))
+
+        # Knock Timing
+        self.knock_table.load_data(list(rom[0x1000:0x1000 + MAP_SIZE]))
+
+        # Injection Scaler
+        INJ_ADDR = 0x077E
+        inj_raw  = rom[INJ_ADDR]
+        self.spin_inj.set_value(inj_raw)
+        self.lbl_inj_info.setText(f"raw={inj_raw}  →  {inj_raw*0.3922:.2f}  (×0.3922)   addr=0x{INJ_ADDR:04X}")
+
+        # CL Disable RPM
+        cl_rpm_raw = rom[0x07E1]
+        self.spin_cl_rpm.set_value(cl_rpm_raw * 25)
+
+        # Decel Cutoff
+        DECEL_ADDR = 0x0E30
+        self.decel_table.load_values([round(rom[DECEL_ADDR+i]*0.3922,1) for i in range(16)])
+
+        # CL Load Limit
+        CL_LOAD_ADDR = 0x0660
+        self.cl_load_table.load_values(list(rom[CL_LOAD_ADDR:CL_LOAD_ADDR+16]))
+
+        # MAF tab visibility
+        self.map_tabs.setTabVisible(self.maf_tab_idx, is_266b)
+        if is_266b:
+            MAF_ADDR = 0x02D0
+            maf_vals = [int.from_bytes(rom[MAF_ADDR+i*2:MAF_ADDR+i*2+2], 'big') for i in range(64)]
+            self.maf_table.load_values(maf_vals)
+
+        # Status
+        cs_ok  = verify_checksum(bytes(rom[:32768]), self._ecu_version)
         cs_str = "✓ checksum OK" if cs_ok else "⚠ checksum INVALID"
-
-        name = os.path.basename(filepath) if filepath else "downloaded ROM"
+        name   = os.path.basename(filepath) if filepath else "downloaded ROM"
         suffix = "  [.034 unscrambled]" if is_034 else ""
-        self.lbl_file.setText(
-            f"  {name}{suffix}  —  {self._ecu_version}  —  {cs_str}"
-        )
+        self.lbl_file.setText(f"  {name}{suffix}  —  {self._ecu_version}  —  {cs_str}")
         self.lbl_file.setStyleSheet(
-            "color: #2dff6e; font-size: 11px;" if cs_ok
-            else "color: #ff6e2d; font-size: 11px;"
-        )
+            "color: #2dff6e; font-size: 11px;" if cs_ok else "color: #ff6e2d; font-size: 11px;")
         self.lbl_dirty.setText("")
-        self.btn_save.setEnabled(True)
         self.btn_saveas.setEnabled(True)
 
     def get_data(self) -> bytes:
-        """Get current ROM bytes with map edits applied and checksum corrected.
-
-        Fuel map cells hold display values (version-specific formula).
-        Converts back to native ROM bytes and fixes checksum before returning.
-        """
-        is_266b = getattr(self, '_ecu_version', '266D') == '266B'
+        is_266b = self._ecu_version == "266B"
+        rom = self._romdata
 
         for r in range(ROWS):
             for c in range(COLS):
                 fi = self.fuel_table.item(r, c)
-                ti = self.timing_table.item(r, c)
                 if fi:
                     try:
-                        if is_266b:
-                            from ecu_profiles import lambda_to_raw
-                            native = lambda_to_raw(float(fi.text()))
-                        else:
-                            native = display_to_raw(float(fi.text()))
-                        self._romdata[FUEL_MAP_ADDR + r * COLS + c] = native
-                    except (ValueError, TypeError):
-                        pass
+                        raw = lambda_to_raw(float(fi.text())) if is_266b else display_to_raw(float(fi.text()))
+                        rom[0x0000 + r*COLS + c] = raw
+                    except (ValueError, TypeError): pass
+                ti = self.timing_table.item(r, c)
                 if ti:
-                    try:
-                        self._romdata[TIMING_MAP_ADDR + r * COLS + c] = int(float(ti.text()))
-                    except (ValueError, TypeError):
-                        pass
+                    try: rom[0x0100 + r*COLS + c] = max(0, min(255, int(float(ti.text()))))
+                    except (ValueError, TypeError): pass
+                ki = self.knock_table.item(r, c)
+                if ki:
+                    try: rom[0x1000 + r*COLS + c] = max(0, min(255, int(float(ki.text()))))
+                    except (ValueError, TypeError): pass
 
-        # Fix checksum over the native 32KB region
-        version = getattr(self, '_ecu_version', '266D')
-        fixed = apply_checksum(self._romdata[:32768], version)
+        try: rom[0x077E] = max(0, min(255, self.spin_inj.get_value()))
+        except Exception: pass
+
+        try: rom[0x07E1] = max(0, min(255, round(self.spin_cl_rpm.get_value() / 25)))
+        except Exception: pass
+
+        DECEL_ADDR = 0x0E30
+        for i, v in enumerate(self.decel_table.get_values()):
+            try: rom[DECEL_ADDR+i] = max(0, min(255, round(v / 0.3922)))
+            except Exception: pass
+
+        CL_LOAD_ADDR = 0x0660
+        for i, v in enumerate(self.cl_load_table.get_values()):
+            try: rom[CL_LOAD_ADDR+i] = max(0, min(255, int(v)))
+            except Exception: pass
+
+        if is_266b:
+            MAF_ADDR = 0x02D0
+            for i, v in enumerate(self.maf_table.get_values()):
+                try:
+                    v = max(0, min(65535, int(v)))
+                    rom[MAF_ADDR+i*2]   = (v >> 8) & 0xFF
+                    rom[MAF_ADDR+i*2+1] = v & 0xFF
+                except Exception: pass
+
+        fixed = apply_checksum(bytearray(rom[:32768]), self._ecu_version)
         self._romdata[:32768] = fixed
-        # Mirror: .bin files served to Teensy are 32KB only; 65536-byte ROM mirrors lower half
         if len(self._romdata) == 65536:
             self._romdata[32768:] = fixed
-
         return bytes(self._romdata)
 
     def _open_file(self):
         path, _ = QFileDialog.getOpenFileName(
             self, "Open ROM", "",
-            "ROM Files (*.bin *.034);;Binary Files (*.bin);;034 Files (*.034);;All Files (*)"
-        )
+            "ROM Files (*.bin *.034);;Binary Files (*.bin);;034 Files (*.034);;All Files (*)")
         if not path:
             return
         try:
             with open(path, "rb") as f:
                 data = f.read()
             self.load_data(data, path)
-            # load_data already unscrambles .034 and stores native bytes in self._romdata,
-            # detects ECU version, and updates the status label with checksum result.
-            # All we need to do here is offer the "Correct Now" dialog if checksum is bad.
-            version = getattr(self, '_ecu_version', '266D')
+            version = self._ecu_version
             if not verify_checksum(bytes(self._romdata[:32768]), version):
                 from ecu_profiles import CHECKSUM_266D, CHECKSUM_266B
                 cs_info = CHECKSUM_266B if version == "266B" else CHECKSUM_266D
@@ -393,92 +584,76 @@ class OfflineRomEditor(QWidget):
                     f"  ECU version : {version}\n"
                     f"  Byte sum    : {actual:,}  (expected {cs_info['target']:,})\n"
                     f"  Delta       : {delta:+,}\n\n"
-                    "The checksum will be corrected automatically when you Save.\n\n"
+                    "The checksum will be corrected automatically when you Save As.\n\n"
                     "If you plan to burn this file to EPROM without saving first,\n"
                     "click  'Correct Now'  to fix it in memory immediately.",
                     buttons=QMessageBox.Ok | QMessageBox.Reset,
-                    defaultButton=QMessageBox.Ok,
-                )
-                if reply == QMessageBox.Reset:   # "Correct Now"
+                    defaultButton=QMessageBox.Ok)
+                if reply == QMessageBox.Reset:
                     fixed = apply_checksum(bytearray(self._romdata[:32768]), version)
                     self._romdata[:32768] = fixed
                     if len(self._romdata) == 65536:
                         self._romdata[32768:] = fixed
-                    self.lbl_file.setText(
-                        self.lbl_file.text().replace("⚠ checksum INVALID", "✓ checksum corrected")
-                    )
+                    self.lbl_file.setText(self.lbl_file.text().replace("⚠ checksum INVALID", "✓ checksum corrected"))
                     self.lbl_file.setStyleSheet("color: #2dff6e; font-size: 11px;")
                     self.lbl_dirty.setText("● Unsaved changes")
                     self._dirty = True
-
         except Exception as e:
             QMessageBox.critical(self, "Open Error", str(e))
 
-    def _save_file(self):
-        if not self._filepath:
-            self._save_as_file()
-            return
-        self._write_file(self._filepath)
-
     def _save_as_file(self):
-        start_dir = os.path.dirname(self._filepath) if self._filepath else ""
-        suggest   = os.path.join(start_dir, "tune.bin")
+        if self._save_path:
+            start = self._save_path
+        elif self._filepath:
+            base  = os.path.splitext(os.path.basename(self._filepath))[0]
+            start = os.path.join(os.path.dirname(self._filepath), base + "_edited.bin")
+        else:
+            start = "tune_edited.bin"
+
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save ROM .bin", suggest,
-            "Binary ROM Files (*.bin);;All Files (*)"
-        )
+            self, "Save ROM As .bin", start, "Binary ROM Files (*.bin);;All Files (*)")
         if not path:
             return
-        # Guard: never save as .034 — that format is bit-scrambled on disk;
-        # saving unscrambled bytes with that extension would corrupt the file.
         if path.lower().endswith(".034"):
-            QMessageBox.warning(
-                self, "Wrong Extension",
+            QMessageBox.warning(self, "Wrong Extension",
                 "Cannot save as .034 — that format requires bit-scrambling.\n"
-                "Save as .bin for Teensy SD card or EPROM programmer use."
-            )
+                "Save as .bin for Teensy SD card or EPROM programmer use.")
             return
-        self._filepath = path
+        if self._filepath and os.path.abspath(path) == os.path.abspath(self._filepath):
+            reply = QMessageBox.warning(
+                self, "Overwrite Source File?",
+                f"You are about to overwrite the original source file:\n\n"
+                f"  {os.path.basename(self._filepath)}\n\n"
+                "This will permanently replace the original ROM data.\n"
+                "It is strongly recommended to save to a new file name.\n\n"
+                "Overwrite anyway?",
+                buttons=QMessageBox.Yes | QMessageBox.No,
+                defaultButton=QMessageBox.No)
+            if reply != QMessageBox.Yes:
+                return
         self._write_file(path)
 
     def _write_file(self, path: str):
-        """Write ROM to disk, apply checksum, and report the correction in the UI."""
         try:
-            # Sample pre-correction sum so we can report the delta to the user
             pre_sum = sum(self._romdata[:32768])
-            data    = self.get_data()   # applies apply_checksum() internally
-
+            data    = self.get_data()
             with open(path, "wb") as f:
                 f.write(data)
-
-            version = getattr(self, '_ecu_version', '266D')
+            self._save_path = path
+            self._dirty     = False
             from ecu_profiles import CHECKSUM_266D, CHECKSUM_266B
-            cs_info = CHECKSUM_266B if version == "266B" else CHECKSUM_266D
-            target  = cs_info["target"]
-            delta   = pre_sum - target
-
-            self._dirty = False
+            cs_info = CHECKSUM_266B if self._ecu_version == "266B" else CHECKSUM_266D
+            delta   = pre_sum - cs_info["target"]
+            cs_note = ("checksum already valid" if delta == 0
+                       else f"checksum corrected  (delta {delta:+},  "
+                            f"region 0x{cs_info['cs_from']:04X}–0x{cs_info['cs_to']:04X})")
             self.lbl_dirty.setText("")
-            name = os.path.basename(path)
-
-            if delta == 0:
-                cs_note = "checksum already valid"
-            else:
-                sign   = "+" if delta > 0 else ""
-                cf, ct = cs_info["cs_from"], cs_info["cs_to"]
-                cs_note = (
-                    f"checksum corrected  "
-                    f"(delta {sign}{delta},  region 0x{cf:04X}–0x{ct:04X})"
-                )
-
-            self.lbl_file.setText(f"  {name}  —  saved ✓   {cs_note}")
+            self.lbl_file.setText(f"  {os.path.basename(path)}  —  saved ✓   {cs_note}")
             self.lbl_file.setStyleSheet("color: #2dff6e; font-size: 11px;")
-
         except Exception as e:
             QMessageBox.critical(self, "Save Error", str(e))
 
-
-    def _on_edit(self):
+    def _on_edit(self, *_):
         if not self._dirty:
             self._dirty = True
             self.lbl_dirty.setText("● Unsaved changes")
