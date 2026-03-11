@@ -222,20 +222,57 @@ LOAD_AXIS_266D = [12.6, 18.8, 23.5, 28.2, 32.9, 38.8, 44.7, 50.6,
                   56.9, 63.1, 69.4, 75.7, 82.0, 88.2, 94.5, 100.0]
 LOAD_AXIS_266B = LOAD_AXIS_266D   # confirmed identical
 
+# ---------------------------------------------------------------------------
+# AAH 12v V6 (V6 AAH, MMS-200) axis breakpoints
+# Confirmed from decoded stock ROM (AAH_Stock_RIP_Chip.034)
+# Axis addresses are identical to 7A ECU (same Hitachi platform).
+# RPM axis starts at 500/750 (not 600/800 like the 7A fuel axis).
+# Fuel and timing share the same RPM axis on the AAH.
+# ---------------------------------------------------------------------------
+
+FUEL_RPM_AXIS_ADDR_AAH  = 0x0270   # same address as 7A timing axis
+LOAD_AXIS_ADDR_AAH      = 0x0280   # same address as 7A timing load axis
+
+# Stock default RPM axis decoded from AAH stock ROM (×25):
+RPM_AXIS_AAH  = [500, 750, 1000, 1250, 1500, 1750, 2000, 2300,
+                 2600, 3000, 3500, 4000, 4500, 5000, 5500, 6000]
+
+# Load axis (kPa) — near-identical to 7A, very slightly different due to
+# raw byte values using factor 0.3922:
+LOAD_AXIS_AAH = [12.6, 18.8, 23.5, 28.2, 32.9, 38.4, 43.9, 50.2,
+                 56.5, 62.8, 69.0, 75.3, 81.6, 87.9, 94.1, 100.0]
+
 
 def read_fuel_rpm_axis(native_rom: bytes, version: str = "266D") -> list:
     """Read 16 fuel-map RPM breakpoints from native ROM bytes."""
-    addr = FUEL_RPM_AXIS_ADDR_266B if version == "266B" else FUEL_RPM_AXIS_ADDR_266D
+    if version == "AAH":
+        addr = FUEL_RPM_AXIS_ADDR_AAH
+    elif version == "266B":
+        addr = FUEL_RPM_AXIS_ADDR_266B
+    else:
+        addr = FUEL_RPM_AXIS_ADDR_266D
     return [int(native_rom[addr + i] * AXIS_FACTOR_RPM) for i in range(16)]
 
 def read_timing_rpm_axis(native_rom: bytes, version: str = "266D") -> list:
-    """Read 16 timing-map RPM breakpoints from native ROM bytes."""
-    addr = TIMING_RPM_AXIS_ADDR_266B if version == "266B" else TIMING_RPM_AXIS_ADDR_266D
+    """Read 16 timing-map RPM breakpoints from native ROM bytes.
+    AAH shares one RPM axis for both fuel and timing maps (at 0x0270).
+    """
+    if version == "AAH":
+        addr = FUEL_RPM_AXIS_ADDR_AAH   # same axis used for timing on AAH
+    elif version == "266B":
+        addr = TIMING_RPM_AXIS_ADDR_266B
+    else:
+        addr = TIMING_RPM_AXIS_ADDR_266D
     return [int(native_rom[addr + i] * AXIS_FACTOR_RPM) for i in range(16)]
 
 def read_load_axis(native_rom: bytes, version: str = "266D") -> list:
     """Read 16 load-axis breakpoints (kPa) from native ROM bytes."""
-    addr = LOAD_AXIS_ADDR_266B if version == "266B" else LOAD_AXIS_ADDR_266D
+    if version == "AAH":
+        addr = LOAD_AXIS_ADDR_AAH
+    elif version == "266B":
+        addr = LOAD_AXIS_ADDR_266B
+    else:
+        addr = LOAD_AXIS_ADDR_266D
     return [round(native_rom[addr + i] * AXIS_FACTOR_LOAD, 1) for i in range(16)]
 
 # Legacy aliases — kept for backwards compat
@@ -328,7 +365,10 @@ CHECKSUM_266B = {
 
 def verify_checksum(native_rom32k: bytes, version: str) -> bool:
     """Return True if the native 32KB ROM has a valid checksum."""
-    cs = CHECKSUM_266D if version == "266D" else CHECKSUM_266B
+    if version == "AAH":
+        cs = CHECKSUM_AAH
+    else:
+        cs = CHECKSUM_266D if version == "266D" else CHECKSUM_266B
     return sum(native_rom32k[:32768]) == cs["target"]
 
 
@@ -342,7 +382,10 @@ def apply_checksum(native_rom32k: bytearray, version: str) -> bytearray:
 
     Returns a new bytearray of length 32768.
     """
-    cs     = CHECKSUM_266D if version == "266D" else CHECKSUM_266B
+    if version == "AAH":
+        cs = CHECKSUM_AAH
+    else:
+        cs = CHECKSUM_266D if version == "266D" else CHECKSUM_266B
     target = cs["target"]
     cf     = cs["cs_from"]
     ct     = cs["cs_to"]
@@ -471,6 +514,60 @@ ECU_MAPS: Dict[str, List[MapDef]] = {
         ),
     ],
 
+    "AAH": [
+        # V6 AAH 12v  (MMS-200 ECU, 893906266-series V6)
+        # Confirmed from decoded stock + Stage1 ROMs (AAH_Stock_RIP_Chip.034 / AAH_Stage_1_R1.034)
+        # and parsed AAH_12v_V6_Generic_1_02.ecu Java serialized definition.
+        #
+        # KEY DIFFERENCES vs 7A ECU:
+        #   - Fuel map at 0x0000 (same address, same signed+128 formula as 266D)
+        #   - Single shared RPM axis at 0x0270 for BOTH fuel and timing maps
+        #   - RPM axis: 500/750/1000/... (starts lower than 7A fuel axis 600/800)
+        #   - Load axis at 0x0280 (same factor 0.3922, near-identical values)
+        #   - No MAF Linearization table (MAP-sensor based, same as 266D)
+        #   - No CL Load Limit table confirmed
+        #   - Injection Scaler at 0x077E (same as 7A, confirmed stock=100)
+        #   - Checksum correction at 0x6AE6–0x6AFE (target 3,684,096)
+        MapDef(
+            name="Fueling Map",
+            data_addr=0x0000, xaxis_addr=0x0280, yaxis_addr=0x0270,
+            cols=16, rows=16,
+            description="Primary fuel map (RPM × Load kPa).  "
+                        "display = signed(native_byte) + 128  (stock range: 78–141).  "
+                        "RPM axis starts at 500/750 (not 600/800 like the 7A)."
+        ),
+        MapDef(
+            name="Timing Map",
+            data_addr=0x0100, xaxis_addr=0x0280, yaxis_addr=0x0270,
+            cols=16, rows=16,
+            description="Primary ignition advance (degrees BTDC, stock: 0–36°)"
+        ),
+        MapDef(
+            name="Timing Map Knock",
+            data_addr=0x1000, xaxis_addr=0x0280, yaxis_addr=0x0270,
+            cols=16, rows=16,
+            description="Knock safety ignition map (degrees BTDC)"
+        ),
+        MapDef(
+            name="Injection Scaler",
+            data_addr=0x077E, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Global injector scaler constant (stock=100). Larger injectors → smaller value."
+        ),
+        MapDef(
+            name="CL Disable RPM",
+            data_addr=0x07E1, xaxis_addr=0x0000, yaxis_addr=0x0000,
+            cols=1, rows=1,
+            description="Disable closed-loop O2 above this RPM (raw × 25 = RPM, stock: 244 → 6100 RPM)"
+        ),
+        MapDef(
+            name="Decel Cutoff",
+            data_addr=0x0E30, xaxis_addr=0x0E20, yaxis_addr=0x0000,
+            cols=16, rows=1,
+            description="Injector decel cutoff per RPM (factor=0.3922=kPa)"
+        ),
+    ],
+
     "266D": [
         MapDef(
             name="Primary Fueling",
@@ -543,15 +640,33 @@ def get_timing_map_def(version: str) -> MapDef:
 RESET_VECTORS = {
     (0xE8, 0xB1): "266D",   # 893906266D  (7A Late, 4-plug)
     (0xD7, 0xBC): "266B",   # 893906266B  (7A Early, 2-plug)
+    # AAH reset vector is 0xFF,0xFF after unscramble (upper ROM half unused)
+    # Detection falls through to CRC32 match for AAH
 }
 
 KNOWN_ROMS = {
     # CRC32 of the native (unscrambled) 32KB ROM, lower half of .034 / raw .bin
-    0x609f1f40: ("266D", "Stock", "893906266D"),
-    0x7739bde5: ("266B", "Stock", "893906266B"),
+    0x609f1f40: ("266D", "Stock",  "893906266D"),
+    0x7739bde5: ("266B", "Stock",  "893906266B"),
+    # AAH 12v V6 (MMS-200 ECU)
+    0x13db1432: ("AAH",  "Stock",  "AAH_12v_V6_MMS200"),
+    0x4818fa0b: ("AAH",  "Stage1", "AAH_12v_V6_MMS200"),
 }
 
 BLANK_REGION_START = 0x7E00   # 266B has 0xFF here; 266D has code
+
+# ---------------------------------------------------------------------------
+# AAH checksum  (V6 12v, MMS-200 ECU)
+# Confirmed: both stock and Stage1 ROMs share byte sum 3,684,096 (0x383700).
+# Correction region: 0x6AE6–0x6AFE (25 bytes of padding/correction space).
+# Same distribute-one-at-a-time algorithm as 7A ECU.
+# ---------------------------------------------------------------------------
+
+CHECKSUM_AAH = {
+    "target":  3_684_096,   # 0x383700 — confirmed from stock and Stage1 ROMs
+    "cs_from": 0x6AE6,      # 25-byte correction region at end of used ROM
+    "cs_to":   0x6AFE,      # inclusive
+}
 
 
 @dataclass
@@ -802,4 +917,7 @@ KNOWN_ROM_LIBRARY: List[KnownROM] = [
     KnownROM("034 - 893906266D Big MAF 91Oct R1",                  "266D", "NA",      "BIG_MAF",  "STOCK_7A", "NA Big MAF"),
     KnownROM("034 - 893906266D Stage 1 91Oct R1",                  "266D", "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA"),
     KnownROM("034 Turbo Kit Stage 1 91 R2 893906266B",             "266B", "TurboS1", "STOCK_7A", "STOCK_7A", "Turbo Stage 1 R2"),
+    # AAH 12v V6 (MMS-200 ECU)
+    KnownROM("AAH Stock RIP Chip",                                  "AAH",  "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock V6 AAH 12v"),
+    KnownROM("AAH Stage 1 R1",                                      "AAH",  "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA V6 AAH 12v"),
 ]

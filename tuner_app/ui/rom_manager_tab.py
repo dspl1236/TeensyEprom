@@ -500,6 +500,7 @@ class OfflineRomEditor(QWidget):
         self._ecu_version = result.version
         self._update_ecu_info(result)
         is_266b = (self._ecu_version == "266B")
+        is_aah  = (self._ecu_version == "AAH")
         rom = self._romdata
 
         # Fuel Map
@@ -509,6 +510,11 @@ class OfflineRomEditor(QWidget):
             self.lbl_fuel_info.setText(
                 "Fuel Map (Lambda) — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
                 "display=signed×0.007813+1.0  |  1.000=stoich  |  stock: 0.625–0.867")
+        elif is_aah:
+            fuel_display = [raw_to_display(b) for b in raw_fuel]
+            self.lbl_fuel_info.setText(
+                "Fuel Map (V6 AAH) — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  "
+                "display=signed+128  |  stock: 78–141  |  RPM axis 500–6000")
         else:
             fuel_display = [raw_to_display(b) for b in raw_fuel]
             self.lbl_fuel_info.setText(
@@ -548,7 +554,7 @@ class OfflineRomEditor(QWidget):
         self.cl_load_table.load_values(list(rom[CL_LOAD_ADDR:CL_LOAD_ADDR+16]))
 
         # MAF tab visibility
-        self.map_tabs.setTabVisible(self.maf_tab_idx, is_266b)
+        self.map_tabs.setTabVisible(self.maf_tab_idx, is_266b)  # AAH has no MAF table
         if is_266b:
             MAF_ADDR = 0x02D0
             maf_vals = [int.from_bytes(rom[MAF_ADDR+i*2:MAF_ADDR+i*2+2], 'big') for i in range(64)]
