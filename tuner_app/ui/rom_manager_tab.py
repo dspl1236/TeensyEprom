@@ -346,8 +346,9 @@ class OfflineRomEditor(QWidget):
         # Tab 1: Timing Map
         timing_widget = QWidget()
         tl = QVBoxLayout(timing_widget); tl.setContentsMargins(0,0,0,0)
-        tl.addWidget(QLabel("Timing Map — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  degrees BTDC",
-                    styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
+        tl.addWidget(QLabel("Timing Map — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  display=raw° BTDC  |  "
+                            "values >128 = retard (e.g. 251 = −5°)  |  Hover cell for signed °",
+                            styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
         self.timing_table = MapTable("timing")
         self.timing_table._teensy = None
         self.timing_table.itemChanged.connect(self._on_edit)
@@ -358,8 +359,8 @@ class OfflineRomEditor(QWidget):
         knock_widget = QWidget()
         kl = QVBoxLayout(knock_widget); kl.setContentsMargins(0,0,0,0)
         kl.addWidget(QLabel(
-            "Knock Safety Timing — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  degrees BTDC\n"
-            "ECU switches to this map on knock detection.",
+            "Knock Safety Timing — 16×16  |  Rows=RPM  |  Cols=Load kPa  |  display=raw° BTDC\n"
+            "ECU switches to this map on knock detection.  Values >128 = retard.  Hover cell for signed °.",
             styleSheet="color:#3d5068; font-size:11px; padding:4px 0;"))
         self.knock_table = MapTable("timing")
         self.knock_table._teensy = None
