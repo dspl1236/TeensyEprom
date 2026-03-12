@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teensy EPROM Emulator — Prototype Wiring Reference</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=IBM+Plex+Sans+Condensed:wght@400;700;900&display=swap');
+
+  :root {
+    --bg:    #04080a;
+    --panel: #080d10;
+    --b1:    #111e26;
+    --b2:    #1a2e3a;
+    --txt:   #a8c0d0;
+    --dim:   #2a4050;
+    --mid:   #4a6880;
+    --wht:   #e0eef8;
+
+    /* wire colours — distinct, printable */
+    --pwr:  #ff3333;   /* red    — 5V power */
+    --gnd:  #222222;   /* black  — GND */
+    --dat:  #ff9900;   /* orange — data bus */
+    --alo:  #00ccff;   /* cyan   — address low */
+    --ahi:  #33ff99;   /* green  — address high */
+    --ctl:  #cc44ff;   /* purple — control (/OE /CE) */
+    --dir:  #ffee00;   /* yellow — DIR signal */
+    --usb:  #ffffff;   /* white  — USB */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--txt);
+    font-family: 'IBM Plex Sans Condensed', sans-serif;
+    padding: 32px 40px;
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--b2);
+    padding-bottom: 20px;
+  }
+  .hdr-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: #00ccff;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--wht);
+    letter-spacing: 1px;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  h1 em { color: #ff9900; font-style: normal; }
+  .hdr-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+    padding: 14px 18px;
+    background: var(--panel);
+    border: 1px solid var(--b1);
+    border-radius: 2px;
+  }
+  .leg-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--txt);
+  }
+  .leg-swatch {
+    width: 28px;
+    height: 4px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* ── DIAGRAM ── */
+  .diagram-wrap {
+    background: var(--panel);
+    border: 1px solid var(--b2);
+    border-radius: 2px;
+    padding: 24px;
+    margin-bottom: 32px;
+    overflow-x: auto;
+  }
+
+  /* ── TABLES ── */
+  .section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--mid);
+    margin: 28px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--b2);
+  }
+  .section-title .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  thead tr { background: #060a0d; }
+  th {
+    padding: 8px 12px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--dim);
+    border-bottom: 1px solid var(--b2);
+    font-weight: 700;
+    text-align: left;
+  }
+  td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--b1);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #0a1018; }
+
+  .col-chip { color: var(--wht); font-weight: 600; min-width: 80px; }
+  .col-pin  { color: var(--mid); min-width: 55px; }
+  .col-sig  { min-width: 60px; }
+  .col-dest { color: var(--txt); }
+  .col-note { color: var(--mid); font-size: 10px; }
+
+  .wire-dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+
+  /* colour chips in table */
+  .w-pwr  { color: var(--pwr); }
+  .w-gnd  { color: #888; }
+  .w-dat  { color: var(--dat); }
+  .w-alo  { color: var(--alo); }
+  .w-ahi  { color: var(--ahi); }
+  .w-ctl  { color: var(--ctl); }
+  .w-dir  { color: var(--dir); }
+  .w-nc   { color: var(--dim); }
+
+  .check { color: var(--dim); font-size: 14px; }
+
+  /* ── CHECKLIST ── */
+  .checklist {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .cl-block {
+    background: var(--panel);
+    border: 1px solid var(--b1);
+    border-radius: 2px;
+    padding: 14px;
+  }
+  .cl-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .cl-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--txt);
+    border-bottom: 1px solid var(--b1);
+  }
+  .cl-row:last-child { border-bottom: none; }
+  .cl-box {
+    width: 14px; height: 14px;
+    border: 1px solid var(--b2);
+    border-radius: 1px;
+    flex-shrink: 0;
+  }
+  .cl-count {
+    font-size: 9px;
+    color: var(--dim);
+    margin-left: auto;
+  }
+
+  .note-box {
+    background: #08100a;
+    border: 1px solid #33ff9922;
+    border-left: 3px solid var(--ahi);
+    border-radius: 2px;
+    padding: 12px 14px;
+    margin-top: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #80a090;
+  }
+  .note-box strong { color: var(--ahi); }
+
+  .warn-box {
+    background: #0a0800;
+    border: 1px solid #ffee0022;
+    border-left: 3px solid var(--dir);
+    border-radius: 2px;
+    padding: 12px 14px;
+    margin-top: 12px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.8;
+    color: #a09870;
+  }
+  .warn-box strong { color: var(--dir); }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-tag">// AUDI 90 TEENSY ECU INTERFACE · LITE v1.0 · PROTOTYPE WIRING</div>
+  <h1>EPROM EMULATOR <em>//</em> BREADBOARD WIRING REFERENCE</h1>
+  <div class="hdr-sub">TEENSY 4.1 (NO PINS) · 74HCT245 ×3 · 27C256 DIP-28 SOCKET · WIRE-BY-WIRE GUIDE</div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--pwr)"></div> RED — 5V Power</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:#555"></div> BLACK — GND</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--dat)"></div> ORANGE — Data bus D0–D7</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--alo)"></div> CYAN — Address low A0–A7</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--ahi)"></div> GREEN — Address high A8–A14</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--ctl)"></div> PURPLE — Control /OE /CE</div>
+  <div class="leg-item"><div class="leg-swatch" style="background:var(--dir)"></div> YELLOW — DIR signal</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  MAIN WIRING DIAGRAM SVG                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="diagram-wrap">
+<svg width="1100" height="740" viewBox="0 0 1100 740" style="display:block;">
+  <defs>
+    <!-- wire markers -->
+    <marker id="ap" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ff3333"/></marker>
+    <marker id="ag" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#444"/></marker>
+    <marker id="ad" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ff9900"/></marker>
+    <marker id="al" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#00ccff"/></marker>
+    <marker id="ah" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#33ff99"/></marker>
+    <marker id="ac" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#cc44ff"/></marker>
+    <marker id="ay" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ffee00"/></marker>
+  </defs>
+
+  <!-- ═══════════════ DIP-28 SOCKET (ECU) ═══════════════ -->
+  <!-- Left column pins 1-14 top-to-bottom, right column 28-15 top-to-bottom -->
+
+  <rect x="30" y="60" width="110" height="600" rx="3" fill="#0a1018" stroke="#1a2e3a" stroke-width="1.5"/>
+  <rect x="30" y="60" width="110" height="4" fill="#ff6600"/>
+  <text x="85" y="50" fill="#ff6600" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="2">DIP-28 SOCKET</text>
+  <text x="85" y="76" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">27C256 FOOTPRINT</text>
+  <text x="85" y="88" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ECU SIDE (5V)</text>
+
+  <!-- notch indicator -->
+  <path d="M68,65 Q85,58 102,65" fill="none" stroke="#4a6880" stroke-width="1"/>
+  <text x="85" y="99" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">▲ notch</text>
+
+  <!-- Pin rows: left side = 1-14, right side = 28-15 -->
+  <!-- Each row is 38px apart, starting at y=115 -->
+
+  <!-- LEFT PINS 1-14 -->
+  <!-- Pin 1 = A14 -->
+  <circle cx="44" cy="118" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="44" y="122" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">1</text>
+  <text x="58" y="119" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8">A14</text>
+
+  <!-- Pin 2 = A12 -->
+  <circle cx="44" cy="156" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="44" y="160" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">2</text>
+  <text x="58" y="157" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8">A12</text>
+
+  <!-- Pin 3 = A7 -->
+  <circle cx="44" cy="194" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="198" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">3</text>
+  <text x="58" y="195" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A7</text>
+
+  <!-- Pin 4 = A6 -->
+  <circle cx="44" cy="232" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="236" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">4</text>
+  <text x="58" y="233" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A6</text>
+
+  <!-- Pin 5 = A5 -->
+  <circle cx="44" cy="270" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="274" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">5</text>
+  <text x="58" y="271" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A5</text>
+
+  <!-- Pin 6 = A4 -->
+  <circle cx="44" cy="308" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="312" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">6</text>
+  <text x="58" y="309" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A4</text>
+
+  <!-- Pin 7 = A3 -->
+  <circle cx="44" cy="346" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="350" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">7</text>
+  <text x="58" y="347" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A3</text>
+
+  <!-- Pin 8 = A2 -->
+  <circle cx="44" cy="384" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="388" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">8</text>
+  <text x="58" y="385" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A2</text>
+
+  <!-- Pin 9 = A1 -->
+  <circle cx="44" cy="422" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="426" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">9</text>
+  <text x="58" y="423" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A1</text>
+
+  <!-- Pin 10 = A0 -->
+  <circle cx="44" cy="460" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="44" y="464" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10</text>
+  <text x="58" y="461" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A0</text>
+
+  <!-- Pin 11 = D0 -->
+  <circle cx="44" cy="498" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="44" y="502" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">11</text>
+  <text x="58" y="499" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D0</text>
+
+  <!-- Pin 12 = D1 -->
+  <circle cx="44" cy="536" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="44" y="540" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">12</text>
+  <text x="58" y="537" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D1</text>
+
+  <!-- Pin 13 = D2 -->
+  <circle cx="44" cy="574" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="44" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">13</text>
+  <text x="58" y="575" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D2</text>
+
+  <!-- Pin 14 = GND -->
+  <circle cx="44" cy="612" r="5" fill="#0d1820" stroke="#444" stroke-width="2"/>
+  <text x="44" y="616" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">14</text>
+  <text x="58" y="613" fill="#888" font-family="IBM Plex Mono,monospace" font-size="8">GND</text>
+
+  <!-- RIGHT PINS 28-15 (top to bottom = 28,27,26...15) -->
+  <!-- Pin 28 = Vcc -->
+  <circle cx="126" cy="118" r="5" fill="#0d1820" stroke="#ff3333" stroke-width="2"/>
+  <text x="126" y="122" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">28</text>
+  <text x="98" y="119" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">Vcc</text>
+
+  <!-- Pin 27 = NC (WE) -->
+  <circle cx="126" cy="156" r="5" fill="#0d1820" stroke="#2a4050" stroke-width="1"/>
+  <text x="126" y="160" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">27</text>
+  <text x="98" y="157" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">NC</text>
+
+  <!-- Pin 26 = A13 -->
+  <circle cx="126" cy="194" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="126" y="198" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">26</text>
+  <text x="98" y="195" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A13</text>
+
+  <!-- Pin 25 = A8 -->
+  <circle cx="126" cy="232" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="126" y="236" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">25</text>
+  <text x="98" y="233" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A8</text>
+
+  <!-- Pin 24 = A9 -->
+  <circle cx="126" cy="270" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="126" y="274" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">24</text>
+  <text x="98" y="271" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A9</text>
+
+  <!-- Pin 23 = A11 -->
+  <circle cx="126" cy="308" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="126" y="312" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">23</text>
+  <text x="98" y="309" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A11</text>
+
+  <!-- Pin 22 = /OE -->
+  <circle cx="126" cy="346" r="5" fill="#0d1820" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="126" y="350" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">22</text>
+  <text x="98" y="347" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">/OE</text>
+
+  <!-- Pin 21 = A10 -->
+  <circle cx="126" cy="384" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="126" y="388" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">21</text>
+  <text x="98" y="385" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A10</text>
+
+  <!-- Pin 20 = /CE -->
+  <circle cx="126" cy="422" r="5" fill="#0d1820" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="126" y="426" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20</text>
+  <text x="98" y="423" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">/CE</text>
+
+  <!-- Pin 19 = D7 -->
+  <circle cx="126" cy="460" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="126" y="464" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">19</text>
+  <text x="98" y="461" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D7</text>
+
+  <!-- Pin 18 = D6 -->
+  <circle cx="126" cy="498" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="126" y="502" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">18</text>
+  <text x="98" y="499" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D6</text>
+
+  <!-- Pin 17 = D5 -->
+  <circle cx="126" cy="536" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="126" y="540" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">17</text>
+  <text x="98" y="537" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D5</text>
+
+  <!-- Pin 16 = D4 -->
+  <circle cx="126" cy="574" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="126" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">16</text>
+  <text x="98" y="575" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D4</text>
+
+  <!-- Pin 15 = D3 -->
+  <circle cx="126" cy="612" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="126" y="616" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">15</text>
+  <text x="98" y="613" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D3</text>
+
+  <!-- ═══════════════ U2 — DATA BUS 74HCT245 ═══════════════ -->
+  <rect x="220" y="450" width="130" height="200" rx="2" fill="#0a1018" stroke="#ff9900" stroke-width="1.5"/>
+  <rect x="220" y="450" width="130" height="3" fill="#ff9900"/>
+  <text x="285" y="467" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U2</text>
+  <text x="285" y="479" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
+  <text x="285" y="491" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DATA BUS  D0–D7</text>
+  <text x="285" y="503" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=LOW (T→ECU)</text>
+
+  <!-- U2 left pins (A side = ECU/5V): D0-D7 -->
+  <text x="228" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A1=D0</text>
+  <text x="228" y="536" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A2=D1</text>
+  <text x="228" y="550" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A3=D2</text>
+  <text x="228" y="564" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A4=D3</text>
+  <text x="228" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A5=D4</text>
+  <text x="228" y="592" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A6=D5</text>
+  <text x="228" y="606" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A7=D6</text>
+  <text x="228" y="620" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A8=D7</text>
+
+  <!-- U2 right pins (B side = Teensy/3.3V) -->
+  <text x="310" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B1→T2</text>
+  <text x="310" y="536" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B2→T3</text>
+  <text x="310" y="550" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B3→T4</text>
+  <text x="310" y="564" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B4→T5</text>
+  <text x="310" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B5→T6</text>
+  <text x="310" y="592" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B6→T7</text>
+  <text x="310" y="606" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B7→T8</text>
+  <text x="310" y="620" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B8→T9</text>
+
+  <!-- ═══════════════ U3 — ADDR LOW 74HCT245 ═══════════════ -->
+  <rect x="220" y="220" width="130" height="200" rx="2" fill="#0a1018" stroke="#00ccff" stroke-width="1.5"/>
+  <rect x="220" y="220" width="130" height="3" fill="#00ccff"/>
+  <text x="285" y="237" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U3</text>
+  <text x="285" y="249" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
+  <text x="285" y="261" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ADDR LOW  A0–A7</text>
+  <text x="285" y="273" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=HIGH (ECU→T)</text>
+
+  <text x="228" y="292" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A1=A0</text>
+  <text x="228" y="306" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A2=A1</text>
+  <text x="228" y="320" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A3=A2</text>
+  <text x="228" y="334" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A4=A3</text>
+  <text x="228" y="348" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A5=A4</text>
+  <text x="228" y="362" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A6=A5</text>
+  <text x="228" y="376" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A7=A6</text>
+  <text x="228" y="390" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A8=A7</text>
+
+  <text x="310" y="292" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B1→T10</text>
+  <text x="310" y="306" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B2→T11</text>
+  <text x="310" y="320" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B3→T12</text>
+  <text x="310" y="334" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B4→T14</text>
+  <text x="310" y="348" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B5→T15</text>
+  <text x="310" y="362" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B6→T16</text>
+  <text x="310" y="376" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B7→T17</text>
+  <text x="310" y="390" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B8→T36</text>
+
+  <!-- ═══════════════ U4 — ADDR HIGH 74HCT245 ═══════════════ -->
+  <rect x="220" y="40" width="130" height="160" rx="2" fill="#0a1018" stroke="#33ff99" stroke-width="1.5"/>
+  <rect x="220" y="40" width="130" height="3" fill="#33ff99"/>
+  <text x="285" y="57" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U4</text>
+  <text x="285" y="69" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
+  <text x="285" y="81" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ADDR HIGH A8–A14 + /CE</text>
+  <text x="285" y="93" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=HIGH (ECU→T)</text>
+
+  <text x="228" y="112" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A1=A8</text>
+  <text x="228" y="126" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A2=A9</text>
+  <text x="228" y="140" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A3=A10</text>
+  <text x="228" y="154" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A4=A11</text>
+  <text x="228" y="168" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A5=A12</text>
+  <text x="228" y="182" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A6=A13</text>
+  <text x="228" y="196" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A7=A14</text>
+  <text x="228" y="210" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">A8=/CE</text>
+
+  <text x="310" y="112" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B1→T18</text>
+  <text x="310" y="126" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B2→T19</text>
+  <text x="310" y="140" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B3→T20</text>
+  <text x="310" y="154" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B4→T21</text>
+  <text x="310" y="168" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B5→T22</text>
+  <text x="310" y="182" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B6→T23</text>
+  <text x="310" y="196" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B7→T24</text>
+  <text x="310" y="210" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">B8→T25</text>
+
+  <!-- ═══════════════ TEENSY 4.1 ═══════════════ -->
+  <rect x="560" y="30" width="190" height="680" rx="3" fill="#040c12" stroke="#00e5ff" stroke-width="2"/>
+  <rect x="560" y="30" width="190" height="4" fill="#00e5ff"/>
+  <text x="655" y="52" fill="#00e5ff" font-family="IBM Plex Mono,monospace" font-size="11" text-anchor="middle" letter-spacing="3" font-weight="700">TEENSY 4.1</text>
+  <text x="655" y="66" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">600MHz ARM M7 · NO PINS VARIANT</text>
+  <text x="655" y="78" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">SOLDER DIRECT TO PADS</text>
+
+  <!-- Left pads (top row) -->
+  <!-- GND, 0,1,2,3,4,5,6,7,8,9,10,11,12,13... -->
+  <!-- We'll show the pins we USE prominently -->
+
+  <!-- DATA BUS PADS T2-T9 (orange) -->
+  <circle cx="572" cy="160" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="164" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">2</text>
+  <text x="584" y="161" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D0</text>
+
+  <circle cx="572" cy="185" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="189" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">3</text>
+  <text x="584" y="186" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D1</text>
+
+  <circle cx="572" cy="210" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="214" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">4</text>
+  <text x="584" y="211" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D2</text>
+
+  <circle cx="572" cy="235" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="239" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">5</text>
+  <text x="584" y="236" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D3</text>
+
+  <circle cx="572" cy="260" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="264" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">6</text>
+  <text x="584" y="261" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D4</text>
+
+  <circle cx="572" cy="285" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="289" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">7</text>
+  <text x="584" y="286" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D5</text>
+
+  <circle cx="572" cy="310" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="314" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">8</text>
+  <text x="584" y="311" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D6</text>
+
+  <circle cx="572" cy="335" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="572" y="339" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">9</text>
+  <text x="584" y="336" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D7</text>
+
+  <!-- ADDR LOW T10-T17 (cyan) — skip 13 (LED) -->
+  <circle cx="572" cy="360" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="364" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10</text>
+  <text x="584" y="361" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A0</text>
+
+  <circle cx="572" cy="385" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="389" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">11</text>
+  <text x="584" y="386" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A1</text>
+
+  <circle cx="572" cy="410" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="414" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">12</text>
+  <text x="584" y="411" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A2</text>
+
+  <!-- Pin 13 = LED — skip for address, mark as reserved -->
+  <circle cx="572" cy="435" r="5" fill="#0d0d00" stroke="#444" stroke-width="1" stroke-dasharray="2,2"/>
+  <text x="572" y="439" fill="#444" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">13</text>
+  <text x="584" y="436" fill="#444" font-family="IBM Plex Mono,monospace" font-size="7">LED⚠</text>
+
+  <circle cx="572" cy="460" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="464" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">14</text>
+  <text x="584" y="461" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A3</text>
+
+  <circle cx="572" cy="485" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="489" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">15</text>
+  <text x="584" y="486" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A4</text>
+
+  <circle cx="572" cy="510" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="514" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">16</text>
+  <text x="584" y="511" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A5</text>
+
+  <circle cx="572" cy="535" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="572" y="539" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">17</text>
+  <text x="584" y="536" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A6</text>
+
+  <!-- ADDR HIGH right side T18-T25 -->
+  <circle cx="738" cy="160" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="164" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">18</text>
+  <text x="720" y="161" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A8</text>
+
+  <circle cx="738" cy="185" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="189" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">19</text>
+  <text x="720" y="186" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A9</text>
+
+  <circle cx="738" cy="210" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="214" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20</text>
+  <text x="720" y="211" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A10</text>
+
+  <circle cx="738" cy="235" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="239" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">21</text>
+  <text x="720" y="236" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A11</text>
+
+  <circle cx="738" cy="260" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="264" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">22</text>
+  <text x="720" y="261" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A12</text>
+
+  <circle cx="738" cy="285" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="289" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">23</text>
+  <text x="720" y="286" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A13</text>
+
+  <circle cx="738" cy="310" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="738" y="314" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">24</text>
+  <text x="720" y="311" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A14</text>
+
+  <circle cx="738" cy="335" r="5" fill="#100018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="738" y="339" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">25</text>
+  <text x="720" y="336" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">/CE</text>
+
+  <!-- /OE via divider -->
+  <circle cx="738" cy="360" r="5" fill="#100018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="738" y="364" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">26</text>
+  <text x="720" y="361" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">/OE</text>
+
+  <!-- A7 on T36 -->
+  <circle cx="738" cy="560" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="738" y="564" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">36</text>
+  <text x="720" y="561" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A7</text>
+
+  <!-- DIR pin T29 -->
+  <circle cx="738" cy="460" r="5" fill="#1a1800" stroke="#ffee00" stroke-width="1.5"/>
+  <text x="738" y="464" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">29</text>
+  <text x="720" y="461" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">DIR</text>
+
+  <!-- VIN / GND on Teensy -->
+  <circle cx="738" cy="660" r="6" fill="#1a0000" stroke="#ff3333" stroke-width="2"/>
+  <text x="738" y="664" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">VIN</text>
+  <text x="720" y="661" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">5V in</text>
+
+  <circle cx="572" cy="660" r="6" fill="#0a0a0a" stroke="#444" stroke-width="2"/>
+  <text x="572" y="664" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">GND</text>
+  <text x="584" y="661" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7">0V</text>
+
+  <!-- USB pad indicator -->
+  <rect x="622" y="692" width="66" height="18" rx="2" fill="#111820" stroke="#ffffff44"/>
+  <text x="655" y="705" fill="#aaa" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">USB →  laptop</text>
+
+  <!-- ═══════════════ WIRES FROM DIP TO 74HCT245 ═══════════════ -->
+
+  <!-- POWER: socket pin 28 → top power bus (red) -->
+  <line x1="126" y1="118" x2="170" y2="118" stroke="#ff3333" stroke-width="2"/>
+  <line x1="170" y1="118" x2="170" y2="30" stroke="#ff3333" stroke-width="2"/>
+  <line x1="170" y1="30" x2="900" y2="30" stroke="#ff3333" stroke-width="2" stroke-dasharray="8,3"/>
+  <text x="500" y="25" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">5V RAIL  (socket pin 28 → Teensy VIN + all 74HCT245 Vcc)</text>
+
+  <!-- GND: socket pin 14 → bottom GND bus (black) -->
+  <line x1="44" y1="612" x2="44" y2="700" stroke="#444" stroke-width="2"/>
+  <line x1="44" y1="700" x2="900" y2="700" stroke="#444" stroke-width="2" stroke-dasharray="8,3"/>
+  <text x="500" y="720" fill="#666" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">GND RAIL  (socket pin 14 → Teensy GND + all 74HCT245 GND)</text>
+
+  <!-- DATA wires DIP→U2 (orange) -->
+  <!-- D0 pin11 → U2 A1 -->
+  <line x1="44" y1="498" x2="160" y2="498" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="160" y1="498" x2="160" y2="519" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="160" y1="519" x2="220" y2="519" stroke="#ff9900" stroke-width="1.5"/>
+  <!-- D1 pin12 → U2 A2 -->
+  <line x1="44" y1="536" x2="155" y2="536" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="155" y1="536" x2="220" y2="533" stroke="#ff9900" stroke-width="1.5"/>
+  <!-- D2 pin13 → U2 A3 -->
+  <line x1="44" y1="574" x2="150" y2="574" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="150" y1="574" x2="220" y2="547" stroke="#ff9900" stroke-width="1.5"/>
+  <!-- D3-D7 from right side -->
+  <line x1="126" y1="612" x2="165" y2="612" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="165" y1="612" x2="220" y2="619" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="126" y1="574" x2="165" y2="574" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="165" y1="574" x2="220" y2="605" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="126" y1="536" x2="165" y2="536" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="165" y1="536" x2="220" y2="591" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="126" y1="498" x2="165" y2="498" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="165" y1="498" x2="220" y2="577" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="126" y1="460" x2="165" y2="460" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="165" y1="460" x2="220" y2="563" stroke="#ff9900" stroke-width="1.5"/>
+
+  <!-- U2 B side → Teensy (orange) -->
+  <line x1="350" y1="519" x2="420" y2="519" stroke="#ff9900" stroke-width="1.5"/>
+  <line x1="420" y1="519" x2="420" y2="160" stroke="#ff9900" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="420" y1="160" x2="572" y2="160" stroke="#ff9900" stroke-width="1.5" marker-end="url(#ad)"/>
+  <!-- just show the bundle line and label -->
+  <text x="490" y="510" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D0–D7</text>
+  <text x="490" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">T2–T9</text>
+
+  <!-- ADDR LOW DIP→U3 (cyan) -->
+  <!-- A0 pin10, A1 pin9... -->
+  <line x1="44" y1="460" x2="180" y2="460" stroke="#00ccff" stroke-width="1.5"/>
+  <line x1="180" y1="460" x2="180" y2="289" stroke="#00ccff" stroke-width="1.5"/>
+  <line x1="180" y1="289" x2="220" y2="289" stroke="#00ccff" stroke-width="1.5"/>
+  <!-- bundle label -->
+  <text x="190" y="370" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8" transform="rotate(-90,190,370)">A0–A7</text>
+
+  <!-- U3 B side → Teensy (cyan) -->
+  <line x1="350" y1="340" x2="430" y2="340" stroke="#00ccff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="430" y1="340" x2="430" y2="370" stroke="#00ccff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="430" y1="370" x2="572" y2="370" stroke="#00ccff" stroke-width="1.5" marker-end="url(#al)"/>
+  <text x="460" y="356" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A0–A6→T10–17 / A7→T36</text>
+
+  <!-- ADDR HIGH DIP→U4 (green) -->
+  <line x1="126" y1="232" x2="185" y2="232" stroke="#33ff99" stroke-width="1.5"/>
+  <line x1="185" y1="232" x2="185" y2="110" stroke="#33ff99" stroke-width="1.5"/>
+  <line x1="185" y1="110" x2="220" y2="110" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="197" y="170" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" transform="rotate(-90,197,170)">A8–A14</text>
+
+  <!-- U4 B side → Teensy (green) -->
+  <line x1="350" y1="155" x2="410" y2="155" stroke="#33ff99" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="410" y1="155" x2="410" y2="170" stroke="#33ff99" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="410" y1="170" x2="738" y2="170" stroke="#33ff99" stroke-width="1.5" marker-end="url(#ah)"/>
+  <text x="500" y="148" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A8–A14 → T18–T24</text>
+
+  <!-- /CE DIP pin20 → U4 A8 → Teensy T25 (purple) -->
+  <line x1="126" y1="422" x2="190" y2="422" stroke="#cc44ff" stroke-width="1.5"/>
+  <line x1="190" y1="422" x2="190" y2="208" stroke="#cc44ff" stroke-width="1.5"/>
+  <line x1="190" y1="208" x2="220" y2="208" stroke="#cc44ff" stroke-width="1.5"/>
+  <!-- /CE Teensy side -->
+  <line x1="350" y1="208" x2="400" y2="208" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="400" y1="208" x2="400" y2="335" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="400" y1="335" x2="738" y2="335" stroke="#cc44ff" stroke-width="1.5" marker-end="url(#ac)"/>
+
+  <!-- /OE DIP pin22 → voltage divider → Teensy T26 (purple) -->
+  <!-- Divider symbol -->
+  <line x1="126" y1="346" x2="480" y2="346" stroke="#cc44ff" stroke-width="1.5"/>
+  <!-- 10k resistor symbol -->
+  <rect x="480" y="338" width="20" height="14" rx="2" fill="#0a1018" stroke="#cc44ff" stroke-width="1"/>
+  <text x="490" y="356" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10k</text>
+  <!-- after resistor to Teensy -->
+  <line x1="500" y1="346" x2="530" y2="346" stroke="#cc44ff" stroke-width="1.5"/>
+  <!-- 20k to GND -->
+  <line x1="530" y1="346" x2="530" y2="380" stroke="#cc44ff" stroke-width="1"/>
+  <rect x="520" y="380" width="20" height="14" rx="2" fill="#0a1018" stroke="#cc44ff" stroke-width="1"/>
+  <text x="530" y="402" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20k</text>
+  <line x1="530" y1="394" x2="530" y2="410" stroke="#cc44ff" stroke-width="1"/>
+  <text x="530" y="422" fill="#444" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">GND</text>
+  <!-- junction to Teensy -->
+  <line x1="530" y1="346" x2="738" y2="360" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ac)"/>
+  <text x="600" y="340" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">/OE→T26 via 10k/20k÷</text>
+
+  <!-- DIR: Teensy T29 → U2 DIR pin -->
+  <line x1="738" y1="460" x2="800" y2="460" stroke="#ffee00" stroke-width="1.5"/>
+  <line x1="800" y1="460" x2="800" y2="730" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="800" y1="730" x2="285" y2="730" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="285" y1="730" x2="285" y2="650" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <text x="540" y="725" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7">T29 → U2 DIR  (firmware controls data bus direction)</text>
+
+  <!-- POWER connections to chips -->
+  <line x1="170" y1="30" x2="170" y2="40" stroke="#ff3333" stroke-width="1.5"/>
+  <!-- label Vcc on each chip -->
+  <text x="285" y="38" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">Vcc pin20</text>
+
+  <!-- VIN connection from 5V rail to Teensy -->
+  <line x1="738" y1="30" x2="738" y2="654" stroke="#ff3333" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="850" y="660" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8">← 5V rail</text>
+
+  <!-- GND to Teensy -->
+  <line x1="572" y1="700" x2="572" y2="666" stroke="#444" stroke-width="1.5" marker-end="url(#ag)"/>
+
+</svg>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  WIRING TABLES                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<div class="section-title"><div class="dot" style="background:#ff3333"></div>STEP 1 — POWER (2 wires)</div>
+<table>
+  <thead><tr><th>From</th><th>Signal</th><th>To</th><th>Wire</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="col-chip">Socket pin 28</td><td class="col-sig w-pwr">5V Vcc</td><td class="col-dest">Teensy VIN pad</td><td><span class="wire-dot" style="background:#ff3333"></span><span class="w-pwr">RED</span></td><td class="col-note">Also branch to U2/U3/U4 Vcc (pin 20)</td></tr>
+    <tr><td class="col-chip">Socket pin 14</td><td class="col-sig w-gnd">GND</td><td class="col-dest">Teensy GND pad</td><td><span class="wire-dot" style="background:#444"></span><span class="w-gnd">BLACK</span></td><td class="col-note">Also branch to U2/U3/U4 GND (pin 10)</td></tr>
+  </tbody>
+</table>
+
+<div class="section-title"><div class="dot" style="background:#ff9900"></div>STEP 2 — DATA BUS D0–D7 (socket → U2 → Teensy, 8 wires each side)</div>
+<table>
+  <thead><tr><th>Socket Pin</th><th>Signal</th><th>U2 A-side</th><th>U2 B-side</th><th>Teensy Pad</th><th>Wire</th></tr></thead>
+  <tbody>
+    <tr><td class="col-pin">Pin 11</td><td class="w-dat">D0</td><td class="col-chip">A1</td><td class="col-chip">B1</td><td class="w-dat">Pin 2</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 12</td><td class="w-dat">D1</td><td class="col-chip">A2</td><td class="col-chip">B2</td><td class="w-dat">Pin 3</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 13</td><td class="w-dat">D2</td><td class="col-chip">A3</td><td class="col-chip">B3</td><td class="w-dat">Pin 4</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 15</td><td class="w-dat">D3</td><td class="col-chip">A4</td><td class="col-chip">B4</td><td class="w-dat">Pin 5</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 16</td><td class="w-dat">D4</td><td class="col-chip">A5</td><td class="col-chip">B5</td><td class="w-dat">Pin 6</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 17</td><td class="w-dat">D5</td><td class="col-chip">A6</td><td class="col-chip">B6</td><td class="w-dat">Pin 7</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 18</td><td class="w-dat">D6</td><td class="col-chip">A7</td><td class="col-chip">B7</td><td class="w-dat">Pin 8</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+    <tr><td class="col-pin">Pin 19</td><td class="w-dat">D7</td><td class="col-chip">A8</td><td class="col-chip">B8</td><td class="w-dat">Pin 9</td><td><span class="wire-dot" style="background:#ff9900"></span><span class="w-dat">ORANGE</span></td></tr>
+  </tbody>
+</table>
+<div class="note-box"><strong>U2 config:</strong> DIR pin (pin 1) → Teensy pad 29 (firmware sets LOW = Teensy drives ECU). /OE (pin 19) → GND (always enabled). Vcc (pin 20) → 5V rail. GND (pin 10) → GND rail. Add 0.1µF ceramic cap between Vcc and GND pins.</div>
+
+<div class="section-title"><div class="dot" style="background:#00ccff"></div>STEP 3 — ADDRESS LOW A0–A7 (socket → U3 → Teensy, 8 wires each side)</div>
+<table>
+  <thead><tr><th>Socket Pin</th><th>Signal</th><th>U3 A-side</th><th>U3 B-side</th><th>Teensy Pad</th><th>Wire</th></tr></thead>
+  <tbody>
+    <tr><td class="col-pin">Pin 10</td><td class="w-alo">A0</td><td class="col-chip">A1</td><td class="col-chip">B1</td><td class="w-alo">Pin 10</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 9</td><td class="w-alo">A1</td><td class="col-chip">A2</td><td class="col-chip">B2</td><td class="w-alo">Pin 11</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 8</td><td class="w-alo">A2</td><td class="col-chip">A3</td><td class="col-chip">B3</td><td class="w-alo">Pin 12</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 7</td><td class="w-alo">A3</td><td class="col-chip">A4</td><td class="col-chip">B4</td><td class="w-alo">Pin 14</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 6</td><td class="w-alo">A4</td><td class="col-chip">A5</td><td class="col-chip">B5</td><td class="w-alo">Pin 15</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 5</td><td class="w-alo">A5</td><td class="col-chip">A6</td><td class="col-chip">B6</td><td class="w-alo">Pin 16</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 4</td><td class="w-alo">A6</td><td class="col-chip">A7</td><td class="col-chip">B7</td><td class="w-alo">Pin 17</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+    <tr><td class="col-pin">Pin 3</td><td class="w-alo">A7</td><td class="col-chip">A8</td><td class="col-chip">B8</td><td class="w-alo">Pin 36</td><td><span class="wire-dot" style="background:#00ccff"></span><span class="w-alo">CYAN</span></td></tr>
+  </tbody>
+</table>
+<div class="note-box"><strong>U3 config:</strong> DIR pin (pin 1) → 5V rail (HIGH = A→B, ECU drives addresses to Teensy). /OE (pin 19) → GND. Vcc → 5V. GND → GND. 0.1µF bypass cap. <strong>Note:</strong> Teensy pin 13 skipped — it has the onboard LED. A7 goes to pin 36 instead.</div>
+
+<div class="section-title"><div class="dot" style="background:#33ff99"></div>STEP 4 — ADDRESS HIGH A8–A14 + /CE (socket → U4 → Teensy, 8 wires each side)</div>
+<table>
+  <thead><tr><th>Socket Pin</th><th>Signal</th><th>U4 A-side</th><th>U4 B-side</th><th>Teensy Pad</th><th>Wire</th></tr></thead>
+  <tbody>
+    <tr><td class="col-pin">Pin 25</td><td class="w-ahi">A8</td><td class="col-chip">A1</td><td class="col-chip">B1</td><td class="w-ahi">Pin 18</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 24</td><td class="w-ahi">A9</td><td class="col-chip">A2</td><td class="col-chip">B2</td><td class="w-ahi">Pin 19</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 21</td><td class="w-ahi">A10</td><td class="col-chip">A3</td><td class="col-chip">B3</td><td class="w-ahi">Pin 20</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 23</td><td class="w-ahi">A11</td><td class="col-chip">A4</td><td class="col-chip">B4</td><td class="w-ahi">Pin 21</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 2</td><td class="w-ahi">A12</td><td class="col-chip">A5</td><td class="col-chip">B5</td><td class="w-ahi">Pin 22</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 26</td><td class="w-ahi">A13</td><td class="col-chip">A6</td><td class="col-chip">B6</td><td class="w-ahi">Pin 23</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 1</td><td class="w-ahi">A14</td><td class="col-chip">A7</td><td class="col-chip">B7</td><td class="w-ahi">Pin 24</td><td><span class="wire-dot" style="background:#33ff99"></span><span class="w-ahi">GREEN</span></td></tr>
+    <tr><td class="col-pin">Pin 20</td><td class="w-ctl">/CE</td><td class="col-chip">A8</td><td class="col-chip">B8</td><td class="w-ctl">Pin 25</td><td><span class="wire-dot" style="background:#cc44ff"></span><span class="w-ctl">PURPLE</span></td></tr>
+  </tbody>
+</table>
+<div class="note-box"><strong>U4 config:</strong> DIR pin (pin 1) → 5V rail (HIGH = A→B). /OE (pin 19) → GND. Vcc → 5V. GND → GND. 0.1µF bypass cap.</div>
+
+<div class="section-title"><div class="dot" style="background:#cc44ff"></div>STEP 5 — /OE CONTROL (voltage divider, 3 components)</div>
+<table>
+  <thead><tr><th>From</th><th>Signal</th><th>Via</th><th>To</th><th>Wire</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="col-chip">Socket pin 22</td><td class="w-ctl">/OE</td><td class="col-dest">10kΩ resistor in series</td><td class="w-ctl">Teensy Pin 26</td><td><span class="wire-dot" style="background:#cc44ff"></span><span class="w-ctl">PURPLE</span></td><td class="col-note">5V÷(10k+20k)×20k = 3.33V ✓</td></tr>
+    <tr><td class="col-chip">Junction (between 10k and Teensy)</td><td class="w-ctl">/OE÷</td><td class="col-dest">20kΩ resistor to GND</td><td class="col-dest">GND rail</td><td><span class="wire-dot" style="background:#cc44ff"></span><span class="w-ctl">PURPLE</span></td><td class="col-note">Pulls divider midpoint to GND</td></tr>
+  </tbody>
+</table>
+
+<div class="section-title"><div class="dot" style="background:#ffee00"></div>STEP 6 — DIR SIGNAL (1 wire)</div>
+<table>
+  <thead><tr><th>From</th><th>Signal</th><th>To</th><th>Wire</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td class="col-chip">Teensy Pin 29</td><td class="w-dir">DIR</td><td class="col-dest">U2 DIR (pin 1)</td><td><span class="wire-dot" style="background:#ffee00"></span><span class="w-dir">YELLOW</span></td><td class="col-note">Firmware drives LOW = Teensy outputs data to ECU</td></tr>
+  </tbody>
+</table>
+
+<div class="section-title"><div class="dot" style="background:#2a4050"></div>STEP 7 — NOT CONNECTED</div>
+<table>
+  <thead><tr><th>Socket Pin</th><th>Signal</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td class="col-pin w-nc">Pin 27</td><td class="w-nc">WE (write enable)</td><td class="col-note">Leave completely unconnected — only used during EPROM programming</td></tr>
+  </tbody>
+</table>
+
+<!-- CHECKLIST -->
+<div class="section-title"><div class="dot" style="background:#4a6880"></div>BUILD CHECKLIST</div>
+<div class="checklist">
+  <div class="cl-block">
+    <div class="cl-title" style="color:#ff3333;">Power</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket pin 28 → Teensy VIN</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket pin 14 → Teensy GND</div>
+    <div class="cl-row"><div class="cl-box"></div>5V branch → U2 Vcc (pin 20)</div>
+    <div class="cl-row"><div class="cl-box"></div>5V branch → U3 Vcc (pin 20)</div>
+    <div class="cl-row"><div class="cl-box"></div>5V branch → U4 Vcc (pin 20)</div>
+    <div class="cl-row"><div class="cl-box"></div>GND branch → U2 GND (pin 10)</div>
+    <div class="cl-row"><div class="cl-box"></div>GND branch → U3 GND (pin 10)</div>
+    <div class="cl-row"><div class="cl-box"></div>GND branch → U4 GND (pin 10)</div>
+    <div class="cl-row"><div class="cl-box"></div>0.1µF bypass cap on U2</div>
+    <div class="cl-row"><div class="cl-box"></div>0.1µF bypass cap on U3</div>
+    <div class="cl-row"><div class="cl-box"></div>0.1µF bypass cap on U4</div>
+  </div>
+  <div class="cl-block">
+    <div class="cl-title" style="color:#ff9900;">Data Bus (U2)</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 11 (D0) → U2 A1</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 12 (D1) → U2 A2</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 13 (D2) → U2 A3</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 15 (D3) → U2 A4</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 16 (D4) → U2 A5</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 17 (D5) → U2 A6</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 18 (D6) → U2 A7</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 19 (D7) → U2 A8</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B1 → Teensy pad 2</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B2 → Teensy pad 3</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B3 → Teensy pad 4</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B4 → Teensy pad 5</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B5 → Teensy pad 6</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B6 → Teensy pad 7</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B7 → Teensy pad 8</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 B8 → Teensy pad 9</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 DIR (pin 1) → Teensy pad 29</div>
+    <div class="cl-row"><div class="cl-box"></div>U2 /OE (pin 19) → GND</div>
+  </div>
+  <div class="cl-block">
+    <div class="cl-title" style="color:#00ccff;">Addr Low (U3) + Addr High (U4)</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 10 (A0) → U3 A1 → T10</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 9  (A1) → U3 A2 → T11</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 8  (A2) → U3 A3 → T12</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 7  (A3) → U3 A4 → T14</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 6  (A4) → U3 A5 → T15</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 5  (A5) → U3 A6 → T16</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 4  (A6) → U3 A7 → T17</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 3  (A7) → U3 A8 → T36</div>
+    <div class="cl-row"><div class="cl-box"></div>U3 DIR (pin 1) → 5V rail</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 25 (A8)  → U4 A1 → T18</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 24 (A9)  → U4 A2 → T19</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 21 (A10) → U4 A3 → T20</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 23 (A11) → U4 A4 → T21</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 2  (A12) → U4 A5 → T22</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 26 (A13) → U4 A6 → T23</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 1  (A14) → U4 A7 → T24</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 20 (/CE) → U4 A8 → T25</div>
+    <div class="cl-row"><div class="cl-box"></div>U4 DIR (pin 1) → 5V rail</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 22 (/OE) → 10k → T26</div>
+    <div class="cl-row"><div class="cl-box"></div>T26 junction → 20k → GND</div>
+    <div class="cl-row"><div class="cl-box"></div>Socket 27 (WE) → NOT CONNECTED</div>
+  </div>
+</div>
+
+<div class="warn-box" style="margin-top:20px;">
+  <strong>PIN 13 WARNING:</strong> Teensy 4.1 pin 13 has the onboard LED. It is NOT used for A3 — A3 routes to pin 14 instead. Do not accidentally wire to pin 13 thinking it follows the sequence from pin 12.<br><br>
+  <strong>WIRE COUNT:</strong> Total wires soldered = 11 power/GND branches + 16 socket→chip + 16 chip→Teensy (data) + 16 socket→chip + 16 chip→Teensy (addr low+high) + 2 control (/OE divider) + 1 DIR = approximately <strong>60 individual solder joints</strong>. Work in groups, test continuity after each group before moving to the next.
+</div>
+</body>
+</html>
