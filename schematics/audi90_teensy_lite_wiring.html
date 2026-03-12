@@ -277,513 +277,620 @@
 <!--  MAIN WIRING DIAGRAM SVG                               -->
 <!-- ═══════════════════════════════════════════════════════ -->
 <div class="diagram-wrap">
-<svg width="1100" height="740" viewBox="0 0 1100 740" style="display:block;">
+<!--
+  LAYOUT — strict orthogonal routing, dedicated vertical bus lanes
+  X positions:
+    DIP socket left pins:  cx=50
+    DIP socket right pins: cx=138
+    Lane A (5V rail):      x=158  — red
+    Lane B (addr-high):    x=168  — green
+    Lane C (addr-low):     x=178  — cyan
+    Lane D (/CE):          x=188  — purple
+    Lane E (/OE):          x=198  — purple
+    [gap]
+    U4 left edge: 220, right edge: 350  (addr-high chip)
+    U3 left edge: 220, right edge: 350  (addr-low chip)
+    U2 left edge: 220, right edge: 350  (data chip)
+    [gap]
+    Lane F (data T→U2):    x=370  — orange
+    Lane G (addr-low U3→T):x=380  — cyan
+    Lane H (addr-high U4→T):x=390 — green
+    Lane I (/CE U4→T):     x=400  — purple
+    Lane J (DIR T29→U2):   x=410  — yellow
+    Lane K (GND rail):     x=420  — black
+    [gap]
+    Teensy left pads:  cx=560
+    Teensy right pads: cx=740
+-->
+<svg width="1160" height="880" viewBox="0 0 1160 880" style="display:block; font-family:'IBM Plex Mono',monospace;">
   <defs>
-    <!-- wire markers -->
-    <marker id="ap" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ff3333"/></marker>
-    <marker id="ag" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#444"/></marker>
-    <marker id="ad" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ff9900"/></marker>
-    <marker id="al" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#00ccff"/></marker>
-    <marker id="ah" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#33ff99"/></marker>
-    <marker id="ac" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#cc44ff"/></marker>
-    <marker id="ay" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto"><polygon points="0 0,6 2,0 4" fill="#ffee00"/></marker>
+    <marker id="mR" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ff3333"/></marker>
+    <marker id="mK" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#555"/></marker>
+    <marker id="mD" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ff9900"/></marker>
+    <marker id="mL" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#00ccff"/></marker>
+    <marker id="mH" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#33ff99"/></marker>
+    <marker id="mP" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#cc44ff"/></marker>
+    <marker id="mY" markerWidth="7" markerHeight="5" refX="7" refY="2.5" orient="auto"><polygon points="0 0,7 2.5,0 5" fill="#ffee00"/></marker>
   </defs>
 
-  <!-- ═══════════════ DIP-28 SOCKET (ECU) ═══════════════ -->
-  <!-- Left column pins 1-14 top-to-bottom, right column 28-15 top-to-bottom -->
-
-  <rect x="30" y="60" width="110" height="600" rx="3" fill="#0a1018" stroke="#1a2e3a" stroke-width="1.5"/>
-  <rect x="30" y="60" width="110" height="4" fill="#ff6600"/>
-  <text x="85" y="50" fill="#ff6600" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="2">DIP-28 SOCKET</text>
-  <text x="85" y="76" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">27C256 FOOTPRINT</text>
-  <text x="85" y="88" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ECU SIDE (5V)</text>
-
-  <!-- notch indicator -->
-  <path d="M68,65 Q85,58 102,65" fill="none" stroke="#4a6880" stroke-width="1"/>
-  <text x="85" y="99" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">▲ notch</text>
-
-  <!-- Pin rows: left side = 1-14, right side = 28-15 -->
-  <!-- Each row is 38px apart, starting at y=115 -->
-
-  <!-- LEFT PINS 1-14 -->
-  <!-- Pin 1 = A14 -->
-  <circle cx="44" cy="118" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="44" y="122" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">1</text>
-  <text x="58" y="119" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8">A14</text>
-
-  <!-- Pin 2 = A12 -->
-  <circle cx="44" cy="156" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="44" y="160" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">2</text>
-  <text x="58" y="157" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8">A12</text>
-
-  <!-- Pin 3 = A7 -->
-  <circle cx="44" cy="194" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="198" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">3</text>
-  <text x="58" y="195" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A7</text>
-
-  <!-- Pin 4 = A6 -->
-  <circle cx="44" cy="232" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="236" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">4</text>
-  <text x="58" y="233" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A6</text>
-
-  <!-- Pin 5 = A5 -->
-  <circle cx="44" cy="270" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="274" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">5</text>
-  <text x="58" y="271" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A5</text>
-
-  <!-- Pin 6 = A4 -->
-  <circle cx="44" cy="308" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="312" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">6</text>
-  <text x="58" y="309" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A4</text>
-
-  <!-- Pin 7 = A3 -->
-  <circle cx="44" cy="346" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="350" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">7</text>
-  <text x="58" y="347" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A3</text>
-
-  <!-- Pin 8 = A2 -->
-  <circle cx="44" cy="384" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="388" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">8</text>
-  <text x="58" y="385" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A2</text>
-
-  <!-- Pin 9 = A1 -->
-  <circle cx="44" cy="422" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="426" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">9</text>
-  <text x="58" y="423" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A1</text>
-
-  <!-- Pin 10 = A0 -->
-  <circle cx="44" cy="460" r="5" fill="#0d1820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="44" y="464" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10</text>
-  <text x="58" y="461" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8">A0</text>
-
-  <!-- Pin 11 = D0 -->
-  <circle cx="44" cy="498" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="44" y="502" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">11</text>
-  <text x="58" y="499" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D0</text>
-
-  <!-- Pin 12 = D1 -->
-  <circle cx="44" cy="536" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="44" y="540" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">12</text>
-  <text x="58" y="537" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D1</text>
-
-  <!-- Pin 13 = D2 -->
-  <circle cx="44" cy="574" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="44" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">13</text>
-  <text x="58" y="575" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D2</text>
-
-  <!-- Pin 14 = GND -->
-  <circle cx="44" cy="612" r="5" fill="#0d1820" stroke="#444" stroke-width="2"/>
-  <text x="44" y="616" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">14</text>
-  <text x="58" y="613" fill="#888" font-family="IBM Plex Mono,monospace" font-size="8">GND</text>
-
-  <!-- RIGHT PINS 28-15 (top to bottom = 28,27,26...15) -->
-  <!-- Pin 28 = Vcc -->
-  <circle cx="126" cy="118" r="5" fill="#0d1820" stroke="#ff3333" stroke-width="2"/>
-  <text x="126" y="122" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">28</text>
-  <text x="98" y="119" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">Vcc</text>
-
-  <!-- Pin 27 = NC (WE) -->
-  <circle cx="126" cy="156" r="5" fill="#0d1820" stroke="#2a4050" stroke-width="1"/>
-  <text x="126" y="160" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">27</text>
-  <text x="98" y="157" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">NC</text>
-
-  <!-- Pin 26 = A13 -->
-  <circle cx="126" cy="194" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="126" y="198" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">26</text>
-  <text x="98" y="195" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A13</text>
-
-  <!-- Pin 25 = A8 -->
-  <circle cx="126" cy="232" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="126" y="236" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">25</text>
-  <text x="98" y="233" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A8</text>
-
-  <!-- Pin 24 = A9 -->
-  <circle cx="126" cy="270" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="126" y="274" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">24</text>
-  <text x="98" y="271" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A9</text>
-
-  <!-- Pin 23 = A11 -->
-  <circle cx="126" cy="308" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="126" y="312" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">23</text>
-  <text x="98" y="309" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A11</text>
-
-  <!-- Pin 22 = /OE -->
-  <circle cx="126" cy="346" r="5" fill="#0d1820" stroke="#cc44ff" stroke-width="1.5"/>
-  <text x="126" y="350" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">22</text>
-  <text x="98" y="347" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">/OE</text>
-
-  <!-- Pin 21 = A10 -->
-  <circle cx="126" cy="384" r="5" fill="#0d1820" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="126" y="388" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">21</text>
-  <text x="98" y="385" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">A10</text>
-
-  <!-- Pin 20 = /CE -->
-  <circle cx="126" cy="422" r="5" fill="#0d1820" stroke="#cc44ff" stroke-width="1.5"/>
-  <text x="126" y="426" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20</text>
-  <text x="98" y="423" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">/CE</text>
-
-  <!-- Pin 19 = D7 -->
-  <circle cx="126" cy="460" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="126" y="464" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">19</text>
-  <text x="98" y="461" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D7</text>
-
-  <!-- Pin 18 = D6 -->
-  <circle cx="126" cy="498" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="126" y="502" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">18</text>
-  <text x="98" y="499" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D6</text>
-
-  <!-- Pin 17 = D5 -->
-  <circle cx="126" cy="536" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="126" y="540" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">17</text>
-  <text x="98" y="537" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D5</text>
-
-  <!-- Pin 16 = D4 -->
-  <circle cx="126" cy="574" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="126" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">16</text>
-  <text x="98" y="575" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D4</text>
-
-  <!-- Pin 15 = D3 -->
-  <circle cx="126" cy="612" r="5" fill="#0d1820" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="126" y="616" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">15</text>
-  <text x="98" y="613" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="end">D3</text>
-
-  <!-- ═══════════════ U2 — DATA BUS 74HCT245 ═══════════════ -->
-  <rect x="220" y="450" width="130" height="200" rx="2" fill="#0a1018" stroke="#ff9900" stroke-width="1.5"/>
-  <rect x="220" y="450" width="130" height="3" fill="#ff9900"/>
-  <text x="285" y="467" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U2</text>
-  <text x="285" y="479" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
-  <text x="285" y="491" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DATA BUS  D0–D7</text>
-  <text x="285" y="503" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=LOW (T→ECU)</text>
-
-  <!-- U2 left pins (A side = ECU/5V): D0-D7 -->
-  <text x="228" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A1=D0</text>
-  <text x="228" y="536" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A2=D1</text>
-  <text x="228" y="550" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A3=D2</text>
-  <text x="228" y="564" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A4=D3</text>
-  <text x="228" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A5=D4</text>
-  <text x="228" y="592" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A6=D5</text>
-  <text x="228" y="606" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A7=D6</text>
-  <text x="228" y="620" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">A8=D7</text>
-
-  <!-- U2 right pins (B side = Teensy/3.3V) -->
-  <text x="310" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B1→T2</text>
-  <text x="310" y="536" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B2→T3</text>
-  <text x="310" y="550" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B3→T4</text>
-  <text x="310" y="564" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B4→T5</text>
-  <text x="310" y="578" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B5→T6</text>
-  <text x="310" y="592" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B6→T7</text>
-  <text x="310" y="606" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B7→T8</text>
-  <text x="310" y="620" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">B8→T9</text>
-
-  <!-- ═══════════════ U3 — ADDR LOW 74HCT245 ═══════════════ -->
-  <rect x="220" y="220" width="130" height="200" rx="2" fill="#0a1018" stroke="#00ccff" stroke-width="1.5"/>
-  <rect x="220" y="220" width="130" height="3" fill="#00ccff"/>
-  <text x="285" y="237" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U3</text>
-  <text x="285" y="249" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
-  <text x="285" y="261" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ADDR LOW  A0–A7</text>
-  <text x="285" y="273" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=HIGH (ECU→T)</text>
-
-  <text x="228" y="292" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A1=A0</text>
-  <text x="228" y="306" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A2=A1</text>
-  <text x="228" y="320" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A3=A2</text>
-  <text x="228" y="334" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A4=A3</text>
-  <text x="228" y="348" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A5=A4</text>
-  <text x="228" y="362" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A6=A5</text>
-  <text x="228" y="376" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A7=A6</text>
-  <text x="228" y="390" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A8=A7</text>
-
-  <text x="310" y="292" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B1→T10</text>
-  <text x="310" y="306" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B2→T11</text>
-  <text x="310" y="320" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B3→T12</text>
-  <text x="310" y="334" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B4→T14</text>
-  <text x="310" y="348" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B5→T15</text>
-  <text x="310" y="362" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B6→T16</text>
-  <text x="310" y="376" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B7→T17</text>
-  <text x="310" y="390" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">B8→T36</text>
-
-  <!-- ═══════════════ U4 — ADDR HIGH 74HCT245 ═══════════════ -->
-  <rect x="220" y="40" width="130" height="160" rx="2" fill="#0a1018" stroke="#33ff99" stroke-width="1.5"/>
-  <rect x="220" y="40" width="130" height="3" fill="#33ff99"/>
-  <text x="285" y="57" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="9" text-anchor="middle" letter-spacing="1" font-weight="700">U4</text>
-  <text x="285" y="69" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">74HCT245</text>
-  <text x="285" y="81" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">ADDR HIGH A8–A14 + /CE</text>
-  <text x="285" y="93" fill="#4a6880" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">DIR=HIGH (ECU→T)</text>
-
-  <text x="228" y="112" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A1=A8</text>
-  <text x="228" y="126" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A2=A9</text>
-  <text x="228" y="140" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A3=A10</text>
-  <text x="228" y="154" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A4=A11</text>
-  <text x="228" y="168" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A5=A12</text>
-  <text x="228" y="182" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A6=A13</text>
-  <text x="228" y="196" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A7=A14</text>
-  <text x="228" y="210" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">A8=/CE</text>
-
-  <text x="310" y="112" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B1→T18</text>
-  <text x="310" y="126" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B2→T19</text>
-  <text x="310" y="140" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B3→T20</text>
-  <text x="310" y="154" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B4→T21</text>
-  <text x="310" y="168" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B5→T22</text>
-  <text x="310" y="182" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B6→T23</text>
-  <text x="310" y="196" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">B7→T24</text>
-  <text x="310" y="210" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">B8→T25</text>
-
-  <!-- ═══════════════ TEENSY 4.1 ═══════════════ -->
-  <rect x="560" y="30" width="190" height="680" rx="3" fill="#040c12" stroke="#00e5ff" stroke-width="2"/>
-  <rect x="560" y="30" width="190" height="4" fill="#00e5ff"/>
-  <text x="655" y="52" fill="#00e5ff" font-family="IBM Plex Mono,monospace" font-size="11" text-anchor="middle" letter-spacing="3" font-weight="700">TEENSY 4.1</text>
-  <text x="655" y="66" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">600MHz ARM M7 · NO PINS VARIANT</text>
-  <text x="655" y="78" fill="#2a4050" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">SOLDER DIRECT TO PADS</text>
-
-  <!-- Left pads (top row) -->
-  <!-- GND, 0,1,2,3,4,5,6,7,8,9,10,11,12,13... -->
-  <!-- We'll show the pins we USE prominently -->
-
-  <!-- DATA BUS PADS T2-T9 (orange) -->
-  <circle cx="572" cy="160" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="164" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">2</text>
-  <text x="584" y="161" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D0</text>
-
-  <circle cx="572" cy="185" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="189" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">3</text>
-  <text x="584" y="186" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D1</text>
-
-  <circle cx="572" cy="210" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="214" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">4</text>
-  <text x="584" y="211" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D2</text>
-
-  <circle cx="572" cy="235" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="239" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">5</text>
-  <text x="584" y="236" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D3</text>
-
-  <circle cx="572" cy="260" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="264" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">6</text>
-  <text x="584" y="261" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D4</text>
-
-  <circle cx="572" cy="285" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="289" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">7</text>
-  <text x="584" y="286" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D5</text>
-
-  <circle cx="572" cy="310" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="314" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">8</text>
-  <text x="584" y="311" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D6</text>
-
-  <circle cx="572" cy="335" r="5" fill="#1a0800" stroke="#ff9900" stroke-width="1.5"/>
-  <text x="572" y="339" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">9</text>
-  <text x="584" y="336" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">D7</text>
-
-  <!-- ADDR LOW T10-T17 (cyan) — skip 13 (LED) -->
-  <circle cx="572" cy="360" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="364" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10</text>
-  <text x="584" y="361" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A0</text>
-
-  <circle cx="572" cy="385" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="389" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">11</text>
-  <text x="584" y="386" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A1</text>
-
-  <circle cx="572" cy="410" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="414" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">12</text>
-  <text x="584" y="411" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A2</text>
-
-  <!-- Pin 13 = LED — skip for address, mark as reserved -->
-  <circle cx="572" cy="435" r="5" fill="#0d0d00" stroke="#444" stroke-width="1" stroke-dasharray="2,2"/>
-  <text x="572" y="439" fill="#444" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">13</text>
-  <text x="584" y="436" fill="#444" font-family="IBM Plex Mono,monospace" font-size="7">LED⚠</text>
-
-  <circle cx="572" cy="460" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="464" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">14</text>
-  <text x="584" y="461" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A3</text>
-
-  <circle cx="572" cy="485" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="489" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">15</text>
-  <text x="584" y="486" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A4</text>
-
-  <circle cx="572" cy="510" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="514" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">16</text>
-  <text x="584" y="511" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A5</text>
-
-  <circle cx="572" cy="535" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="572" y="539" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">17</text>
-  <text x="584" y="536" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A6</text>
-
-  <!-- ADDR HIGH right side T18-T25 -->
-  <circle cx="738" cy="160" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="164" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">18</text>
-  <text x="720" y="161" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A8</text>
-
-  <circle cx="738" cy="185" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="189" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">19</text>
-  <text x="720" y="186" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A9</text>
-
-  <circle cx="738" cy="210" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="214" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20</text>
-  <text x="720" y="211" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A10</text>
-
-  <circle cx="738" cy="235" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="239" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">21</text>
-  <text x="720" y="236" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A11</text>
-
-  <circle cx="738" cy="260" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="264" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">22</text>
-  <text x="720" y="261" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A12</text>
-
-  <circle cx="738" cy="285" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="289" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">23</text>
-  <text x="720" y="286" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A13</text>
-
-  <circle cx="738" cy="310" r="5" fill="#001a0a" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="738" y="314" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">24</text>
-  <text x="720" y="311" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A14</text>
-
-  <circle cx="738" cy="335" r="5" fill="#100018" stroke="#cc44ff" stroke-width="1.5"/>
-  <text x="738" y="339" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">25</text>
-  <text x="720" y="336" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">/CE</text>
-
-  <!-- /OE via divider -->
-  <circle cx="738" cy="360" r="5" fill="#100018" stroke="#cc44ff" stroke-width="1.5"/>
-  <text x="738" y="364" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">26</text>
-  <text x="720" y="361" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">/OE</text>
-
-  <!-- A7 on T36 -->
-  <circle cx="738" cy="560" r="5" fill="#001820" stroke="#00ccff" stroke-width="1.5"/>
-  <text x="738" y="564" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">36</text>
-  <text x="720" y="561" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">A7</text>
-
-  <!-- DIR pin T29 -->
-  <circle cx="738" cy="460" r="5" fill="#1a1800" stroke="#ffee00" stroke-width="1.5"/>
-  <text x="738" y="464" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">29</text>
-  <text x="720" y="461" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">DIR</text>
-
-  <!-- VIN / GND on Teensy -->
-  <circle cx="738" cy="660" r="6" fill="#1a0000" stroke="#ff3333" stroke-width="2"/>
-  <text x="738" y="664" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">VIN</text>
-  <text x="720" y="661" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="end">5V in</text>
-
-  <circle cx="572" cy="660" r="6" fill="#0a0a0a" stroke="#444" stroke-width="2"/>
-  <text x="572" y="664" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">GND</text>
-  <text x="584" y="661" fill="#888" font-family="IBM Plex Mono,monospace" font-size="7">0V</text>
-
-  <!-- USB pad indicator -->
-  <rect x="622" y="692" width="66" height="18" rx="2" fill="#111820" stroke="#ffffff44"/>
-  <text x="655" y="705" fill="#aaa" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">USB →  laptop</text>
-
-  <!-- ═══════════════ WIRES FROM DIP TO 74HCT245 ═══════════════ -->
-
-  <!-- POWER: socket pin 28 → top power bus (red) -->
-  <line x1="126" y1="118" x2="170" y2="118" stroke="#ff3333" stroke-width="2"/>
-  <line x1="170" y1="118" x2="170" y2="30" stroke="#ff3333" stroke-width="2"/>
-  <line x1="170" y1="30" x2="900" y2="30" stroke="#ff3333" stroke-width="2" stroke-dasharray="8,3"/>
-  <text x="500" y="25" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">5V RAIL  (socket pin 28 → Teensy VIN + all 74HCT245 Vcc)</text>
-
-  <!-- GND: socket pin 14 → bottom GND bus (black) -->
-  <line x1="44" y1="612" x2="44" y2="700" stroke="#444" stroke-width="2"/>
-  <line x1="44" y1="700" x2="900" y2="700" stroke="#444" stroke-width="2" stroke-dasharray="8,3"/>
-  <text x="500" y="720" fill="#666" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">GND RAIL  (socket pin 14 → Teensy GND + all 74HCT245 GND)</text>
-
-  <!-- DATA wires DIP→U2 (orange) -->
-  <!-- D0 pin11 → U2 A1 -->
-  <line x1="44" y1="498" x2="160" y2="498" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="160" y1="498" x2="160" y2="519" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="160" y1="519" x2="220" y2="519" stroke="#ff9900" stroke-width="1.5"/>
-  <!-- D1 pin12 → U2 A2 -->
-  <line x1="44" y1="536" x2="155" y2="536" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="155" y1="536" x2="220" y2="533" stroke="#ff9900" stroke-width="1.5"/>
-  <!-- D2 pin13 → U2 A3 -->
-  <line x1="44" y1="574" x2="150" y2="574" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="150" y1="574" x2="220" y2="547" stroke="#ff9900" stroke-width="1.5"/>
-  <!-- D3-D7 from right side -->
-  <line x1="126" y1="612" x2="165" y2="612" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="165" y1="612" x2="220" y2="619" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="126" y1="574" x2="165" y2="574" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="165" y1="574" x2="220" y2="605" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="126" y1="536" x2="165" y2="536" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="165" y1="536" x2="220" y2="591" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="126" y1="498" x2="165" y2="498" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="165" y1="498" x2="220" y2="577" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="126" y1="460" x2="165" y2="460" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="165" y1="460" x2="220" y2="563" stroke="#ff9900" stroke-width="1.5"/>
-
-  <!-- U2 B side → Teensy (orange) -->
-  <line x1="350" y1="519" x2="420" y2="519" stroke="#ff9900" stroke-width="1.5"/>
-  <line x1="420" y1="519" x2="420" y2="160" stroke="#ff9900" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="420" y1="160" x2="572" y2="160" stroke="#ff9900" stroke-width="1.5" marker-end="url(#ad)"/>
-  <!-- just show the bundle line and label -->
-  <text x="490" y="510" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="8">D0–D7</text>
-  <text x="490" y="522" fill="#ff9900" font-family="IBM Plex Mono,monospace" font-size="7">T2–T9</text>
-
-  <!-- ADDR LOW DIP→U3 (cyan) -->
-  <!-- A0 pin10, A1 pin9... -->
-  <line x1="44" y1="460" x2="180" y2="460" stroke="#00ccff" stroke-width="1.5"/>
-  <line x1="180" y1="460" x2="180" y2="289" stroke="#00ccff" stroke-width="1.5"/>
-  <line x1="180" y1="289" x2="220" y2="289" stroke="#00ccff" stroke-width="1.5"/>
-  <!-- bundle label -->
-  <text x="190" y="370" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="8" transform="rotate(-90,190,370)">A0–A7</text>
-
-  <!-- U3 B side → Teensy (cyan) -->
-  <line x1="350" y1="340" x2="430" y2="340" stroke="#00ccff" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="430" y1="340" x2="430" y2="370" stroke="#00ccff" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="430" y1="370" x2="572" y2="370" stroke="#00ccff" stroke-width="1.5" marker-end="url(#al)"/>
-  <text x="460" y="356" fill="#00ccff" font-family="IBM Plex Mono,monospace" font-size="7">A0–A6→T10–17 / A7→T36</text>
-
-  <!-- ADDR HIGH DIP→U4 (green) -->
-  <line x1="126" y1="232" x2="185" y2="232" stroke="#33ff99" stroke-width="1.5"/>
-  <line x1="185" y1="232" x2="185" y2="110" stroke="#33ff99" stroke-width="1.5"/>
-  <line x1="185" y1="110" x2="220" y2="110" stroke="#33ff99" stroke-width="1.5"/>
-  <text x="197" y="170" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="8" transform="rotate(-90,197,170)">A8–A14</text>
-
-  <!-- U4 B side → Teensy (green) -->
-  <line x1="350" y1="155" x2="410" y2="155" stroke="#33ff99" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="410" y1="155" x2="410" y2="170" stroke="#33ff99" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="410" y1="170" x2="738" y2="170" stroke="#33ff99" stroke-width="1.5" marker-end="url(#ah)"/>
-  <text x="500" y="148" fill="#33ff99" font-family="IBM Plex Mono,monospace" font-size="7">A8–A14 → T18–T24</text>
-
-  <!-- /CE DIP pin20 → U4 A8 → Teensy T25 (purple) -->
-  <line x1="126" y1="422" x2="190" y2="422" stroke="#cc44ff" stroke-width="1.5"/>
-  <line x1="190" y1="422" x2="190" y2="208" stroke="#cc44ff" stroke-width="1.5"/>
-  <line x1="190" y1="208" x2="220" y2="208" stroke="#cc44ff" stroke-width="1.5"/>
-  <!-- /CE Teensy side -->
-  <line x1="350" y1="208" x2="400" y2="208" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="400" y1="208" x2="400" y2="335" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="400" y1="335" x2="738" y2="335" stroke="#cc44ff" stroke-width="1.5" marker-end="url(#ac)"/>
-
-  <!-- /OE DIP pin22 → voltage divider → Teensy T26 (purple) -->
-  <!-- Divider symbol -->
-  <line x1="126" y1="346" x2="480" y2="346" stroke="#cc44ff" stroke-width="1.5"/>
-  <!-- 10k resistor symbol -->
-  <rect x="480" y="338" width="20" height="14" rx="2" fill="#0a1018" stroke="#cc44ff" stroke-width="1"/>
-  <text x="490" y="356" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">10k</text>
-  <!-- after resistor to Teensy -->
-  <line x1="500" y1="346" x2="530" y2="346" stroke="#cc44ff" stroke-width="1.5"/>
-  <!-- 20k to GND -->
-  <line x1="530" y1="346" x2="530" y2="380" stroke="#cc44ff" stroke-width="1"/>
-  <rect x="520" y="380" width="20" height="14" rx="2" fill="#0a1018" stroke="#cc44ff" stroke-width="1"/>
-  <text x="530" y="402" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">20k</text>
-  <line x1="530" y1="394" x2="530" y2="410" stroke="#cc44ff" stroke-width="1"/>
-  <text x="530" y="422" fill="#444" font-family="IBM Plex Mono,monospace" font-size="8" text-anchor="middle">GND</text>
-  <!-- junction to Teensy -->
-  <line x1="530" y1="346" x2="738" y2="360" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ac)"/>
-  <text x="600" y="340" fill="#cc44ff" font-family="IBM Plex Mono,monospace" font-size="7">/OE→T26 via 10k/20k÷</text>
-
-  <!-- DIR: Teensy T29 → U2 DIR pin -->
-  <line x1="738" y1="460" x2="800" y2="460" stroke="#ffee00" stroke-width="1.5"/>
-  <line x1="800" y1="460" x2="800" y2="730" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="800" y1="730" x2="285" y2="730" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <line x1="285" y1="730" x2="285" y2="650" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="4,2"/>
-  <text x="540" y="725" fill="#ffee00" font-family="IBM Plex Mono,monospace" font-size="7">T29 → U2 DIR  (firmware controls data bus direction)</text>
-
-  <!-- POWER connections to chips -->
-  <line x1="170" y1="30" x2="170" y2="40" stroke="#ff3333" stroke-width="1.5"/>
-  <!-- label Vcc on each chip -->
-  <text x="285" y="38" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="7" text-anchor="middle">Vcc pin20</text>
-
-  <!-- VIN connection from 5V rail to Teensy -->
-  <line x1="738" y1="30" x2="738" y2="654" stroke="#ff3333" stroke-width="1.5" stroke-dasharray="6,3"/>
-  <text x="850" y="660" fill="#ff3333" font-family="IBM Plex Mono,monospace" font-size="8">← 5V rail</text>
-
-  <!-- GND to Teensy -->
-  <line x1="572" y1="700" x2="572" y2="666" stroke="#444" stroke-width="1.5" marker-end="url(#ag)"/>
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- BACKGROUND LANE SHADING (subtle, for readability) -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <rect x="154" y="0" width="6"  height="880" fill="#ff333308"/>
+  <rect x="164" y="0" width="6"  height="880" fill="#33ff9908"/>
+  <rect x="174" y="0" width="6"  height="880" fill="#00ccff08"/>
+  <rect x="184" y="0" width="6"  height="880" fill="#cc44ff08"/>
+  <rect x="194" y="0" width="6"  height="880" fill="#cc44ff06"/>
+  <rect x="366" y="0" width="6"  height="880" fill="#ff990008"/>
+  <rect x="376" y="0" width="6"  height="880" fill="#00ccff08"/>
+  <rect x="386" y="0" width="6"  height="880" fill="#33ff9908"/>
+  <rect x="396" y="0" width="6"  height="880" fill="#cc44ff08"/>
+  <rect x="406" y="0" width="6"  height="880" fill="#ffee0008"/>
+  <rect x="416" y="0" width="6"  height="880" fill="#55555508"/>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- DIP-28 SOCKET                                     -->
+  <!-- Pins 1-14 left col (top→bottom), 28-15 right col  -->
+  <!-- Row pitch=28px, first pin y=130                   -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <rect x="22" y="80" width="130" height="720" rx="3" fill="#050d12" stroke="#2a4a5a" stroke-width="1.5"/>
+  <rect x="22" y="80" width="130" height="4" fill="#ff6600" rx="3"/>
+  <text x="87" y="68" fill="#ff6600" font-size="9" text-anchor="middle" letter-spacing="2">DIP-28 SOCKET</text>
+  <text x="87" y="93" fill="#3a5a6a" font-size="7" text-anchor="middle">27C256 · ECU SIDE · 5V</text>
+  <!-- notch -->
+  <path d="M67,84 Q87,76 107,84" fill="none" stroke="#3a5a6a" stroke-width="1"/>
+
+  <!-- helper macro: left pin = x50, right pin = x124 -->
+  <!-- PIN DATA: [pin#, signal, colour, side(L/R), y] -->
+
+  <!-- LEFT PINS 1–14, y = 130 + (n-1)*44 -->
+  <!-- Pin 1  A14  green  y=130 -->
+  <circle cx="50" cy="130" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="50" cy="130" y="134" fill="#33ff99" font-size="7" text-anchor="middle">1</text>
+  <text x="63"  y="134" fill="#33ff99" font-size="8">A14</text>
+
+  <!-- Pin 2  A12  green  y=174 -->
+  <circle cx="50" cy="174" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="50" y="178" fill="#33ff99" font-size="7" text-anchor="middle">2</text>
+  <text x="63" y="178" fill="#33ff99" font-size="8">A12</text>
+
+  <!-- Pin 3  A7   cyan   y=218 -->
+  <circle cx="50" cy="218" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="222" fill="#00ccff" font-size="7" text-anchor="middle">3</text>
+  <text x="63" y="222" fill="#00ccff" font-size="8">A7</text>
+
+  <!-- Pin 4  A6   cyan   y=262 -->
+  <circle cx="50" cy="262" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="266" fill="#00ccff" font-size="7" text-anchor="middle">4</text>
+  <text x="63" y="266" fill="#00ccff" font-size="8">A6</text>
+
+  <!-- Pin 5  A5   cyan   y=306 -->
+  <circle cx="50" cy="306" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="310" fill="#00ccff" font-size="7" text-anchor="middle">5</text>
+  <text x="63" y="310" fill="#00ccff" font-size="8">A5</text>
+
+  <!-- Pin 6  A4   cyan   y=350 -->
+  <circle cx="50" cy="350" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="354" fill="#00ccff" font-size="7" text-anchor="middle">6</text>
+  <text x="63" y="354" fill="#00ccff" font-size="8">A4</text>
+
+  <!-- Pin 7  A3   cyan   y=394 -->
+  <circle cx="50" cy="394" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="398" fill="#00ccff" font-size="7" text-anchor="middle">7</text>
+  <text x="63" y="398" fill="#00ccff" font-size="8">A3</text>
+
+  <!-- Pin 8  A2   cyan   y=438 -->
+  <circle cx="50" cy="438" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="442" fill="#00ccff" font-size="7" text-anchor="middle">8</text>
+  <text x="63" y="442" fill="#00ccff" font-size="8">A2</text>
+
+  <!-- Pin 9  A1   cyan   y=482 -->
+  <circle cx="50" cy="482" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="486" fill="#00ccff" font-size="7" text-anchor="middle">9</text>
+  <text x="63" y="486" fill="#00ccff" font-size="8">A1</text>
+
+  <!-- Pin 10 A0   cyan   y=526 -->
+  <circle cx="50" cy="526" r="6" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="50" y="530" fill="#00ccff" font-size="7" text-anchor="middle">10</text>
+  <text x="63" y="530" fill="#00ccff" font-size="8">A0</text>
+
+  <!-- Pin 11 D0   orange y=570 -->
+  <circle cx="50" cy="570" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="50" y="574" fill="#ff9900" font-size="7" text-anchor="middle">11</text>
+  <text x="63" y="574" fill="#ff9900" font-size="8">D0</text>
+
+  <!-- Pin 12 D1   orange y=614 -->
+  <circle cx="50" cy="614" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="50" y="618" fill="#ff9900" font-size="7" text-anchor="middle">12</text>
+  <text x="63" y="618" fill="#ff9900" font-size="8">D1</text>
+
+  <!-- Pin 13 D2   orange y=658 -->
+  <circle cx="50" cy="658" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="50" y="662" fill="#ff9900" font-size="7" text-anchor="middle">13</text>
+  <text x="63" y="662" fill="#ff9900" font-size="8">D2</text>
+
+  <!-- Pin 14 GND  black  y=702 -->
+  <circle cx="50" cy="702" r="6" fill="#0a0a0a" stroke="#555" stroke-width="2"/>
+  <text x="50" y="706" fill="#888" font-size="7" text-anchor="middle">14</text>
+  <text x="63" y="706" fill="#888" font-size="8">GND</text>
+
+  <!-- RIGHT PINS 28–15  (top→bottom = 28,27,26..15) -->
+  <!-- Pin 28 Vcc  red    y=130 -->
+  <circle cx="124" cy="130" r="6" fill="#120000" stroke="#ff3333" stroke-width="2"/>
+  <text x="124" y="134" fill="#ff3333" font-size="7" text-anchor="middle">28</text>
+  <text x="111" y="134" fill="#ff3333" font-size="8" text-anchor="end">Vcc</text>
+
+  <!-- Pin 27 NC(WE) dim  y=174 -->
+  <circle cx="124" cy="174" r="6" fill="#080808" stroke="#2a4050" stroke-width="1" stroke-dasharray="2,2"/>
+  <text x="124" y="178" fill="#2a4050" font-size="7" text-anchor="middle">27</text>
+  <text x="111" y="178" fill="#2a4050" font-size="8" text-anchor="end">NC</text>
+
+  <!-- Pin 26 A13  green  y=218 -->
+  <circle cx="124" cy="218" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="124" y="222" fill="#33ff99" font-size="7" text-anchor="middle">26</text>
+  <text x="111" y="222" fill="#33ff99" font-size="8" text-anchor="end">A13</text>
+
+  <!-- Pin 25 A8   green  y=262 -->
+  <circle cx="124" cy="262" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="124" y="266" fill="#33ff99" font-size="7" text-anchor="middle">25</text>
+  <text x="111" y="266" fill="#33ff99" font-size="8" text-anchor="end">A8</text>
+
+  <!-- Pin 24 A9   green  y=306 -->
+  <circle cx="124" cy="306" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="124" y="310" fill="#33ff99" font-size="7" text-anchor="middle">24</text>
+  <text x="111" y="310" fill="#33ff99" font-size="8" text-anchor="end">A9</text>
+
+  <!-- Pin 23 A11  green  y=350 -->
+  <circle cx="124" cy="350" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="124" y="354" fill="#33ff99" font-size="7" text-anchor="middle">23</text>
+  <text x="111" y="354" fill="#33ff99" font-size="8" text-anchor="end">A11</text>
+
+  <!-- Pin 22 /OE  purple y=394 -->
+  <circle cx="124" cy="394" r="6" fill="#0e0018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="124" y="398" fill="#cc44ff" font-size="7" text-anchor="middle">22</text>
+  <text x="111" y="398" fill="#cc44ff" font-size="8" text-anchor="end">/OE</text>
+
+  <!-- Pin 21 A10  green  y=438 -->
+  <circle cx="124" cy="438" r="6" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="124" y="442" fill="#33ff99" font-size="7" text-anchor="middle">21</text>
+  <text x="111" y="442" fill="#33ff99" font-size="8" text-anchor="end">A10</text>
+
+  <!-- Pin 20 /CE  purple y=482 -->
+  <circle cx="124" cy="482" r="6" fill="#0e0018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="124" y="486" fill="#cc44ff" font-size="7" text-anchor="middle">20</text>
+  <text x="111" y="486" fill="#cc44ff" font-size="8" text-anchor="end">/CE</text>
+
+  <!-- Pin 19 D7   orange y=526 -->
+  <circle cx="124" cy="526" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="124" y="530" fill="#ff9900" font-size="7" text-anchor="middle">19</text>
+  <text x="111" y="530" fill="#ff9900" font-size="8" text-anchor="end">D7</text>
+
+  <!-- Pin 18 D6   orange y=570 -->
+  <circle cx="124" cy="570" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="124" y="574" fill="#ff9900" font-size="7" text-anchor="middle">18</text>
+  <text x="111" y="574" fill="#ff9900" font-size="8" text-anchor="end">D6</text>
+
+  <!-- Pin 17 D5   orange y=614 -->
+  <circle cx="124" cy="614" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="124" y="618" fill="#ff9900" font-size="7" text-anchor="middle">17</text>
+  <text x="111" y="618" fill="#ff9900" font-size="8" text-anchor="end">D5</text>
+
+  <!-- Pin 16 D4   orange y=658 -->
+  <circle cx="124" cy="658" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="124" y="662" fill="#ff9900" font-size="7" text-anchor="middle">16</text>
+  <text x="111" y="662" fill="#ff9900" font-size="8" text-anchor="end">D4</text>
+
+  <!-- Pin 15 D3   orange y=702 -->
+  <circle cx="124" cy="702" r="6" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="124" y="706" fill="#ff9900" font-size="7" text-anchor="middle">15</text>
+  <text x="111" y="706" fill="#ff9900" font-size="8" text-anchor="end">D3</text>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- 74HCT245 CHIPS  x=220–350                         -->
+  <!-- U4 ADDR HIGH  y=80–240                            -->
+  <!-- U3 ADDR LOW   y=280–500                           -->
+  <!-- U2 DATA BUS   y=540–760                           -->
+  <!-- ══════════════════════════════════════════════════ -->
+
+  <!-- U4 -->
+  <rect x="220" y="88" width="136" height="160" rx="2" fill="#040e08" stroke="#33ff99" stroke-width="1.5"/>
+  <rect x="220" y="88" width="136" height="3" fill="#33ff99" rx="1"/>
+  <text x="288" y="105" fill="#33ff99" font-size="9" text-anchor="middle" font-weight="700" letter-spacing="1">U4  74HCT245</text>
+  <text x="288" y="117" fill="#3a6a4a" font-size="7" text-anchor="middle">ADDR HIGH  A8–A14 + /CE</text>
+  <text x="288" y="128" fill="#3a6a4a" font-size="7" text-anchor="middle">DIR=5V (A→B)  /OE=GND</text>
+  <!-- U4 left stub labels A-side -->
+  <text x="226" y="147" fill="#33ff99" font-size="7">A1=A8</text>
+  <text x="226" y="159" fill="#33ff99" font-size="7">A2=A9</text>
+  <text x="226" y="171" fill="#33ff99" font-size="7">A3=A10</text>
+  <text x="226" y="183" fill="#33ff99" font-size="7">A4=A11</text>
+  <text x="226" y="195" fill="#33ff99" font-size="7">A5=A12</text>
+  <text x="226" y="207" fill="#33ff99" font-size="7">A6=A13</text>
+  <text x="226" y="219" fill="#33ff99" font-size="7">A7=A14</text>
+  <text x="226" y="231" fill="#cc44ff" font-size="7">A8=/CE</text>
+  <!-- U4 right stub labels B-side -->
+  <text x="350" y="147" fill="#33ff99" font-size="7">B1→T18</text>
+  <text x="350" y="159" fill="#33ff99" font-size="7">B2→T19</text>
+  <text x="350" y="171" fill="#33ff99" font-size="7">B3→T20</text>
+  <text x="350" y="183" fill="#33ff99" font-size="7">B4→T21</text>
+  <text x="350" y="195" fill="#33ff99" font-size="7">B5→T22</text>
+  <text x="350" y="207" fill="#33ff99" font-size="7">B6→T23</text>
+  <text x="350" y="219" fill="#33ff99" font-size="7">B7→T24</text>
+  <text x="350" y="231" fill="#cc44ff" font-size="7">B8→T25</text>
+
+  <!-- U3 -->
+  <rect x="220" y="288" width="136" height="210" rx="2" fill="#020a12" stroke="#00ccff" stroke-width="1.5"/>
+  <rect x="220" y="288" width="136" height="3" fill="#00ccff" rx="1"/>
+  <text x="288" y="305" fill="#00ccff" font-size="9" text-anchor="middle" font-weight="700" letter-spacing="1">U3  74HCT245</text>
+  <text x="288" y="317" fill="#2a5a6a" font-size="7" text-anchor="middle">ADDR LOW  A0–A7</text>
+  <text x="288" y="328" fill="#2a5a6a" font-size="7" text-anchor="middle">DIR=5V (A→B)  /OE=GND</text>
+  <text x="226" y="347" fill="#00ccff" font-size="7">A1=A0</text>
+  <text x="226" y="359" fill="#00ccff" font-size="7">A2=A1</text>
+  <text x="226" y="371" fill="#00ccff" font-size="7">A3=A2</text>
+  <text x="226" y="383" fill="#00ccff" font-size="7">A4=A3</text>
+  <text x="226" y="395" fill="#00ccff" font-size="7">A5=A4</text>
+  <text x="226" y="407" fill="#00ccff" font-size="7">A6=A5</text>
+  <text x="226" y="419" fill="#00ccff" font-size="7">A7=A6</text>
+  <text x="226" y="431" fill="#00ccff" font-size="7">A8=A7</text>
+  <text x="350" y="347" fill="#00ccff" font-size="7">B1→T10</text>
+  <text x="350" y="359" fill="#00ccff" font-size="7">B2→T11</text>
+  <text x="350" y="371" fill="#00ccff" font-size="7">B3→T12</text>
+  <text x="350" y="383" fill="#00ccff" font-size="7">B4→T14</text>
+  <text x="350" y="395" fill="#00ccff" font-size="7">B5→T15</text>
+  <text x="350" y="407" fill="#00ccff" font-size="7">B6→T16</text>
+  <text x="350" y="419" fill="#00ccff" font-size="7">B7→T17</text>
+  <text x="350" y="431" fill="#00ccff" font-size="7">B8→T36</text>
+
+  <!-- U2 -->
+  <rect x="220" y="548" width="136" height="210" rx="2" fill="#12080" stroke="#ff9900" stroke-width="1.5"/>
+  <rect x="220" y="548" width="136" height="3" fill="#ff9900" rx="1"/>
+  <text x="288" y="565" fill="#ff9900" font-size="9" text-anchor="middle" font-weight="700" letter-spacing="1">U2  74HCT245</text>
+  <text x="288" y="577" fill="#6a4a2a" font-size="7" text-anchor="middle">DATA BUS  D0–D7</text>
+  <text x="288" y="588" fill="#6a4a2a" font-size="7" text-anchor="middle">DIR=T29  /OE=GND</text>
+  <text x="226" y="607" fill="#ff9900" font-size="7">A1=D0</text>
+  <text x="226" y="619" fill="#ff9900" font-size="7">A2=D1</text>
+  <text x="226" y="631" fill="#ff9900" font-size="7">A3=D2</text>
+  <text x="226" y="643" fill="#ff9900" font-size="7">A4=D3</text>
+  <text x="226" y="655" fill="#ff9900" font-size="7">A5=D4</text>
+  <text x="226" y="667" fill="#ff9900" font-size="7">A6=D5</text>
+  <text x="226" y="679" fill="#ff9900" font-size="7">A7=D6</text>
+  <text x="226" y="691" fill="#ff9900" font-size="7">A8=D7</text>
+  <text x="350" y="607" fill="#ff9900" font-size="7">B1→T2</text>
+  <text x="350" y="619" fill="#ff9900" font-size="7">B2→T3</text>
+  <text x="350" y="631" fill="#ff9900" font-size="7">B3→T4</text>
+  <text x="350" y="643" fill="#ff9900" font-size="7">B4→T5</text>
+  <text x="350" y="655" fill="#ff9900" font-size="7">B5→T6</text>
+  <text x="350" y="667" fill="#ff9900" font-size="7">B6→T7</text>
+  <text x="350" y="679" fill="#ff9900" font-size="7">B7→T8</text>
+  <text x="350" y="691" fill="#ff9900" font-size="7">B8→T9</text>
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!-- TEENSY 4.1  x=560–760                             -->
+  <!-- ══════════════════════════════════════════════════ -->
+  <rect x="555" y="80" width="210" height="760" rx="3" fill="#02080e" stroke="#00e5ff" stroke-width="2"/>
+  <rect x="555" y="80" width="210" height="4" fill="#00e5ff" rx="2"/>
+  <text x="660" y="100" fill="#00e5ff" font-size="11" text-anchor="middle" letter-spacing="3" font-weight="700">TEENSY 4.1</text>
+  <text x="660" y="114" fill="#1a3a4a" font-size="7" text-anchor="middle">NO-PINS · SOLDER TO PADS · 3.3V I/O</text>
+
+  <!-- Left pads (data + addr-low) -->
+  <!-- T2–T9 data orange, T10–T17 addr-low cyan (skip T13) -->
+  <!-- pitch=27px starting y=148 -->
+
+  <!-- T2 D0 -->
+  <circle cx="567" cy="160" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="164" fill="#ff9900" font-size="7" text-anchor="middle">2</text>
+  <text x="580" y="164" fill="#ff9900" font-size="8">D0</text>
+
+  <circle cx="567" cy="187" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="191" fill="#ff9900" font-size="7" text-anchor="middle">3</text>
+  <text x="580" y="191" fill="#ff9900" font-size="8">D1</text>
+
+  <circle cx="567" cy="214" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="218" fill="#ff9900" font-size="7" text-anchor="middle">4</text>
+  <text x="580" y="218" fill="#ff9900" font-size="8">D2</text>
+
+  <circle cx="567" cy="241" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="245" fill="#ff9900" font-size="7" text-anchor="middle">5</text>
+  <text x="580" y="245" fill="#ff9900" font-size="8">D3</text>
+
+  <circle cx="567" cy="268" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="272" fill="#ff9900" font-size="7" text-anchor="middle">6</text>
+  <text x="580" y="272" fill="#ff9900" font-size="8">D4</text>
+
+  <circle cx="567" cy="295" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="299" fill="#ff9900" font-size="7" text-anchor="middle">7</text>
+  <text x="580" y="299" fill="#ff9900" font-size="8">D5</text>
+
+  <circle cx="567" cy="322" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="326" fill="#ff9900" font-size="7" text-anchor="middle">8</text>
+  <text x="580" y="326" fill="#ff9900" font-size="8">D6</text>
+
+  <circle cx="567" cy="349" r="5" fill="#120800" stroke="#ff9900" stroke-width="1.5"/>
+  <text x="567" y="353" fill="#ff9900" font-size="7" text-anchor="middle">9</text>
+  <text x="580" y="353" fill="#ff9900" font-size="8">D7</text>
+
+  <!-- T10–T12 addr-low cyan -->
+  <circle cx="567" cy="376" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="380" fill="#00ccff" font-size="7" text-anchor="middle">10</text>
+  <text x="580" y="380" fill="#00ccff" font-size="8">A0</text>
+
+  <circle cx="567" cy="403" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="407" fill="#00ccff" font-size="7" text-anchor="middle">11</text>
+  <text x="580" y="407" fill="#00ccff" font-size="8">A1</text>
+
+  <circle cx="567" cy="430" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="434" fill="#00ccff" font-size="7" text-anchor="middle">12</text>
+  <text x="580" y="434" fill="#00ccff" font-size="8">A2</text>
+
+  <!-- T13 LED — skip, show warning -->
+  <circle cx="567" cy="457" r="5" fill="#060606" stroke="#333" stroke-width="1" stroke-dasharray="2,2"/>
+  <text x="567" y="461" fill="#333" font-size="7" text-anchor="middle">13</text>
+  <text x="580" y="461" fill="#444" font-size="8">LED ⚠ skip</text>
+
+  <!-- T14–T17 addr-low cyan -->
+  <circle cx="567" cy="484" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="488" fill="#00ccff" font-size="7" text-anchor="middle">14</text>
+  <text x="580" y="488" fill="#00ccff" font-size="8">A3</text>
+
+  <circle cx="567" cy="511" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="515" fill="#00ccff" font-size="7" text-anchor="middle">15</text>
+  <text x="580" y="515" fill="#00ccff" font-size="8">A4</text>
+
+  <circle cx="567" cy="538" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="542" fill="#00ccff" font-size="7" text-anchor="middle">16</text>
+  <text x="580" y="542" fill="#00ccff" font-size="8">A5</text>
+
+  <circle cx="567" cy="565" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="569" fill="#00ccff" font-size="7" text-anchor="middle">17</text>
+  <text x="580" y="569" fill="#00ccff" font-size="8">A6</text>
+
+  <!-- T36 A7 — bottom left area -->
+  <circle cx="567" cy="720" r="5" fill="#020c12" stroke="#00ccff" stroke-width="1.5"/>
+  <text x="567" y="724" fill="#00ccff" font-size="7" text-anchor="middle">36</text>
+  <text x="580" y="724" fill="#00ccff" font-size="8">A7</text>
+
+  <!-- Right pads: T18–T25 addr-high/CE, T26 /OE, T29 DIR, VIN, GND -->
+  <!-- T18–T24 green addr-high -->
+  <circle cx="753" cy="160" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="164" fill="#33ff99" font-size="7" text-anchor="middle">18</text>
+  <text x="738" y="164" fill="#33ff99" font-size="8" text-anchor="end">A8</text>
+
+  <circle cx="753" cy="187" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="191" fill="#33ff99" font-size="7" text-anchor="middle">19</text>
+  <text x="738" y="191" fill="#33ff99" font-size="8" text-anchor="end">A9</text>
+
+  <circle cx="753" cy="214" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="218" fill="#33ff99" font-size="7" text-anchor="middle">20</text>
+  <text x="738" y="218" fill="#33ff99" font-size="8" text-anchor="end">A10</text>
+
+  <circle cx="753" cy="241" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="245" fill="#33ff99" font-size="7" text-anchor="middle">21</text>
+  <text x="738" y="245" fill="#33ff99" font-size="8" text-anchor="end">A11</text>
+
+  <circle cx="753" cy="268" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="272" fill="#33ff99" font-size="7" text-anchor="middle">22</text>
+  <text x="738" y="272" fill="#33ff99" font-size="8" text-anchor="end">A12</text>
+
+  <circle cx="753" cy="295" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="299" fill="#33ff99" font-size="7" text-anchor="middle">23</text>
+  <text x="738" y="299" fill="#33ff99" font-size="8" text-anchor="end">A13</text>
+
+  <circle cx="753" cy="322" r="5" fill="#061410" stroke="#33ff99" stroke-width="1.5"/>
+  <text x="753" y="326" fill="#33ff99" font-size="7" text-anchor="middle">24</text>
+  <text x="738" y="326" fill="#33ff99" font-size="8" text-anchor="end">A14</text>
+
+  <!-- T25 /CE purple -->
+  <circle cx="753" cy="349" r="5" fill="#0e0018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="753" y="353" fill="#cc44ff" font-size="7" text-anchor="middle">25</text>
+  <text x="738" y="353" fill="#cc44ff" font-size="8" text-anchor="end">/CE</text>
+
+  <!-- T26 /OE purple -->
+  <circle cx="753" cy="376" r="5" fill="#0e0018" stroke="#cc44ff" stroke-width="1.5"/>
+  <text x="753" y="380" fill="#cc44ff" font-size="7" text-anchor="middle">26</text>
+  <text x="738" y="380" fill="#cc44ff" font-size="8" text-anchor="end">/OE</text>
+
+  <!-- T29 DIR yellow -->
+  <circle cx="753" cy="457" r="5" fill="#181800" stroke="#ffee00" stroke-width="1.5"/>
+  <text x="753" y="461" fill="#ffee00" font-size="7" text-anchor="middle">29</text>
+  <text x="738" y="461" fill="#ffee00" font-size="8" text-anchor="end">DIR</text>
+
+  <!-- VIN / GND -->
+  <circle cx="753" cy="790" r="7" fill="#120000" stroke="#ff3333" stroke-width="2"/>
+  <text x="753" y="794" fill="#ff3333" font-size="7" text-anchor="middle">VIN</text>
+  <text x="738" y="794" fill="#ff3333" font-size="8" text-anchor="end">5V in</text>
+
+  <circle cx="567" cy="790" r="7" fill="#080808" stroke="#555" stroke-width="2"/>
+  <text x="567" y="794" fill="#888" font-size="7" text-anchor="middle">GND</text>
+  <text x="580" y="794" fill="#888" font-size="8">0V</text>
+
+  <!-- USB label -->
+  <rect x="614" y="820" width="92" height="16" rx="2" fill="#0a1218" stroke="#ffffff22"/>
+  <text x="660" y="832" fill="#aaa" font-size="8" text-anchor="middle">USB-C → laptop</text>
+
+
+  <!-- ══════════════════════════════════════════════════ -->
+  <!--  WIRES — each group in its own vertical bus lane   -->
+  <!--                                                    -->
+  <!--  LEFT BUS LANES (between DIP right edge and U chips) -->
+  <!--  Lane 1 x=157: 5V power (red)                     -->
+  <!--  Lane 2 x=165: addr-high bus (green)               -->
+  <!--  Lane 3 x=173: addr-low bus (cyan)                 -->
+  <!--  Lane 4 x=181: /CE (purple)                        -->
+  <!--  Lane 5 x=189: /OE (purple dashed)                 -->
+  <!--                                                    -->
+  <!--  RIGHT BUS LANES (between U chips and Teensy)      -->
+  <!--  Lane 6 x=369: data bus bundle (orange)            -->
+  <!--  Lane 7 x=377: addr-low bundle (cyan)              -->
+  <!--  Lane 8 x=385: addr-high bundle (green)            -->
+  <!--  Lane 9 x=393: /CE (purple)                        -->
+  <!--  Lane 10 x=401: DIR (yellow)                       -->
+  <!--  Lane 11 x=424: GND (black)                        -->
+  <!-- ══════════════════════════════════════════════════ -->
+
+  <!-- ─── 5V POWER RAIL (red, lane x=157) ─── -->
+  <!-- socket pin28 → lane, then vertical to Teensy VIN and each chip Vcc -->
+  <polyline points="124,130 157,130 157,790 753,790" fill="none" stroke="#ff3333" stroke-width="2" marker-end="url(#mR)"/>
+  <!-- taps down to each chip Vcc (pin 20 on 74HCT245 is top-right corner area, represented as tap on chip body) -->
+  <!-- U4 tap -->
+  <line x1="157" y1="130" x2="157" y2="88" stroke="#ff3333" stroke-width="1.5"/>
+  <polyline points="157,88 288,88" fill="none" stroke="#ff3333" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="230" y="84" fill="#ff3333" font-size="6">Vcc</text>
+  <!-- U3 tap -->
+  <polyline points="157,288 288,288" fill="none" stroke="#ff3333" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="230" y="284" fill="#ff3333" font-size="6">Vcc</text>
+  <!-- U2 tap -->
+  <polyline points="157,548 288,548" fill="none" stroke="#ff3333" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="230" y="544" fill="#ff3333" font-size="6">Vcc</text>
+  <!-- junction dots on 5V lane -->
+  <circle cx="157" cy="130" r="3" fill="#ff3333"/>
+  <circle cx="157" cy="288" r="3" fill="#ff3333"/>
+  <circle cx="157" cy="548" r="3" fill="#ff3333"/>
+  <circle cx="157" cy="790" r="3" fill="#ff3333"/>
+
+  <!-- ─── GND RAIL (black, lane x=424) ─── -->
+  <!-- socket pin14 → GND bus → Teensy GND + chip GNDs -->
+  <polyline points="50,702 424,702 424,790 567,790" fill="none" stroke="#555" stroke-width="2" marker-end="url(#mK)"/>
+  <!-- U4 GND tap -->
+  <polyline points="424,248 288,248" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="300" y="244" fill="#555" font-size="6">GND</text>
+  <!-- U3 GND tap -->
+  <polyline points="424,498 288,498" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="300" y="494" fill="#555" font-size="6">GND</text>
+  <!-- U2 GND tap -->
+  <polyline points="424,758 288,758" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <text x="300" y="754" fill="#555" font-size="6">GND</text>
+  <!-- junction dots -->
+  <circle cx="424" cy="702" r="3" fill="#555"/>
+  <circle cx="424" cy="248" r="3" fill="#555"/>
+  <circle cx="424" cy="498" r="3" fill="#555"/>
+  <circle cx="424" cy="758" r="3" fill="#555"/>
+
+  <!-- ─── ADDR-HIGH bus (green, left lane x=165) ─── -->
+  <!-- Each addr-high pin on DIP right col → horizontal to lane → vertical → into U4 left side -->
+  <!-- Pins on DIP right: A8=pin25 y=262, A9=pin24 y=306, A10=pin21 y=438, A11=pin23 y=350, A12=pin2(LEFT) y=174, A13=pin26 y=218, A14=pin1(LEFT) y=130 -->
+  <!-- All go to U4 A-side. U4 is y=88-248. We drop each DIP pin to lane x=165 then route up to U4 left edge at appropriate y -->
+
+  <!-- A8 (socket pin25 right, y=262) → lane165 → U4-A1 y=144 -->
+  <polyline points="124,262 165,262 165,144 220,144" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A9 (socket pin24 right, y=306) → lane165 → U4-A2 y=156 -->
+  <polyline points="124,306 165,306 165,156 220,156" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A10 (socket pin21 right, y=438) → lane165 → U4-A3 y=168 -->
+  <polyline points="124,438 165,438 165,168 220,168" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A11 (socket pin23 right, y=350) → lane165 → U4-A4 y=180 -->
+  <polyline points="124,350 165,350 165,180 220,180" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A12 (socket pin2 LEFT, y=174) → short right to lane165 → U4-A5 y=192 -->
+  <polyline points="50,174 165,174 165,192 220,192" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A13 (socket pin26 right, y=218) → lane165 → U4-A6 y=204 -->
+  <polyline points="124,218 165,218 165,204 220,204" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <!-- A14 (socket pin1 LEFT, y=130) → lane165 → U4-A7 y=216 -->
+  <polyline points="50,130 165,130 165,216 220,216" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+
+  <!-- ─── ADDR-HIGH right side: U4 B-side → Teensy (green, lane x=385) ─── -->
+  <!-- U4 B-side outputs at x=356 (right edge of chip), y = same as A-side rows -->
+  <!-- Each goes right to lane x=385 then down (or up) to Teensy right pads -->
+  <polyline points="356,144 385,144 385,160 753,160" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,156 385,156 385,187 753,187" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,168 385,168 385,214 753,214" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,180 385,180 385,241 753,241" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,192 385,192 385,268 753,268" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,204 385,204 385,295 753,295" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+  <polyline points="356,216 385,216 385,322 753,322" fill="none" stroke="#33ff99" stroke-width="1.5" marker-end="url(#mH)"/>
+
+  <!-- ─── /CE (purple): socket pin20 right y=482 → lane x=181 → U4-A8 y=228 → U4-B8 → Teensy T25 y=349 ─── -->
+  <polyline points="124,482 181,482 181,228 220,228" fill="none" stroke="#cc44ff" stroke-width="1.5" marker-end="url(#mP)"/>
+  <polyline points="356,228 393,228 393,349 753,349" fill="none" stroke="#cc44ff" stroke-width="1.5" marker-end="url(#mP)"/>
+
+  <!-- ─── ADDR-LOW bus (cyan, left lane x=173) ─── -->
+  <!-- DIP left pins: A0=pin10 y=526, A1=pin9 y=482(conflict—use 478), A2=8 y=438, A3=7 y=394, A4=6 y=350, A5=5 y=306, A6=4 y=262, A7=3 y=218 -->
+  <!-- Route each left-side DIP pin to lane x=173, then into U3 left edge (y=288-498) -->
+  <!-- U3 A-side rows: A0→y=344, A1→y=356, A2→y=368, A3→y=380, A4→y=392, A5→y=404, A6→y=416, A7→y=428 -->
+  <polyline points="50,526 173,526 173,344 220,344" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,482 173,482 173,356 220,356" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,438 173,438 173,368 220,368" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,394 173,394 173,380 220,380" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,350 173,350 173,392 220,392" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,306 173,306 173,404 220,404" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,262 173,262 173,416 220,416" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="50,218 173,218 173,428 220,428" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+
+  <!-- ─── ADDR-LOW right side: U3 B-side → Teensy left pads (cyan, lane x=377) ─── -->
+  <polyline points="356,344 377,344 377,376 567,376" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,356 377,356 377,403 567,403" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,368 377,368 377,430 567,430" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,380 377,380 377,484 567,484" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,392 377,392 377,511 567,511" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,404 377,404 377,538 567,538" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <polyline points="356,416 377,416 377,565 567,565" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <!-- A7 → T36 y=720 — runs down lane to bottom -->
+  <polyline points="356,428 377,428 377,720 567,720" fill="none" stroke="#00ccff" stroke-width="1.5" marker-end="url(#mL)"/>
+  <text x="363" y="600" fill="#00ccff" font-size="7" transform="rotate(-90,363,600)">A7→T36</text>
+
+  <!-- ─── DATA BUS (orange): DIP left pins 11-13 + DIP right pins 19,18,17,16,15 → U2 A-side, U2 B-side → Teensy T2-T9 ─── -->
+  <!-- U2 A-side rows: D0→y=604, D1→y=616, D2→y=628, D3→y=640, D4→y=652, D5→y=664, D6→y=676, D7→y=688 -->
+  <!-- D0–D2 come from DIP left pins 11–13 (y=570,614,658) -->
+  <polyline points="50,570 165,570 165,604 220,604" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="50,614 165,614 165,616 220,616" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="50,658 165,658 165,628 220,628" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <!-- D3–D7 from DIP right pins 15–19 (y=702,658,614,570,526) -->
+  <polyline points="124,702 165,702 165,640 220,640" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="124,658 165,658 165,652 220,652" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="124,614 165,614 165,664 220,664" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="124,570 165,570 165,676 220,676" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="124,526 165,526 165,688 220,688" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+
+  <!-- U2 B-side → Teensy T2-T9 (orange, lane x=369) -->
+  <polyline points="356,604 369,604 369,160 567,160" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,616 369,616 369,187 567,187" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,628 369,628 369,214 567,214" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,640 369,640 369,241 567,241" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,652 369,652 369,268 567,268" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,664 369,664 369,295 567,295" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,676 369,676 369,322 567,322" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+  <polyline points="356,688 369,688 369,349 567,349" fill="none" stroke="#ff9900" stroke-width="1.5" marker-end="url(#mD)"/>
+
+  <!-- ─── /OE (purple dashed): socket pin22 right y=394 → voltage divider → Teensy T26 ─── -->
+  <!-- Route: pin22 → lane x=189 → right to divider at x=470 y=394 → then to Teensy T26 y=376 -->
+  <polyline points="124,394 189,394" fill="none" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="189" y1="394" x2="470" y2="394" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <!-- 10k resistor symbol at x=470 -->
+  <rect x="470" y="385" width="24" height="18" rx="2" fill="#080010" stroke="#cc44ff" stroke-width="1.2"/>
+  <text x="482" y="398" fill="#cc44ff" font-size="7" text-anchor="middle">10k</text>
+  <!-- after resistor → Teensy T26 -->
+  <line x1="494" y1="394" x2="520" y2="394" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="520" y1="394" x2="520" y2="376" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <line x1="520" y1="376" x2="753" y2="376" stroke="#cc44ff" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#mP)"/>
+  <!-- 20k to GND tap from junction -->
+  <line x1="520" y1="394" x2="520" y2="440" stroke="#cc44ff" stroke-width="1.2"/>
+  <rect x="510" y="440" width="20" height="16" rx="2" fill="#080010" stroke="#cc44ff" stroke-width="1"/>
+  <text x="520" y="452" fill="#cc44ff" font-size="7" text-anchor="middle">20k</text>
+  <line x1="520" y1="456" x2="520" y2="470" stroke="#cc44ff" stroke-width="1.2"/>
+  <line x1="510" y1="470" x2="530" y2="470" stroke="#cc44ff" stroke-width="1"/>
+  <line x1="514" y1="476" x2="526" y2="476" stroke="#cc44ff" stroke-width="0.8"/>
+  <line x1="518" y1="482" x2="522" y2="482" stroke="#cc44ff" stroke-width="0.6"/>
+  <text x="540" y="476" fill="#555" font-size="7">GND</text>
+  <!-- junction dot -->
+  <circle cx="520" cy="394" r="3" fill="#cc44ff"/>
+
+  <!-- ─── DIR (yellow): Teensy T29 right y=457 → U2 DIR pin ─── -->
+  <!-- Route: T29 right → lane x=401 → down to U2 area → into U2 DIR (pin1, upper left of chip y≈548) -->
+  <polyline points="753,457 401,457 401,548 220,548" fill="none" stroke="#ffee00" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#mY)"/>
+  <text x="450" y="453" fill="#ffee00" font-size="7">DIR  T29→U2</text>
+
+  <!-- ─── LANE LABELS (vertical, in the bus lanes) ─── -->
+  <text x="157" y="55" fill="#ff333388" font-size="7" text-anchor="middle" transform="rotate(-90,157,55)">5V</text>
+  <text x="165" y="55" fill="#33ff9988" font-size="7" text-anchor="middle" transform="rotate(-90,165,55)">A-HI</text>
+  <text x="173" y="55" fill="#00ccff88" font-size="7" text-anchor="middle" transform="rotate(-90,173,55)">A-LO</text>
+  <text x="181" y="55" fill="#cc44ff88" font-size="7" text-anchor="middle" transform="rotate(-90,181,55)">/CE</text>
+  <text x="189" y="55" fill="#cc44ff88" font-size="7" text-anchor="middle" transform="rotate(-90,189,55)">/OE</text>
+  <text x="369" y="55" fill="#ff990088" font-size="7" text-anchor="middle" transform="rotate(-90,369,55)">DAT</text>
+  <text x="377" y="55" fill="#00ccff88" font-size="7" text-anchor="middle" transform="rotate(-90,377,55)">A-LO</text>
+  <text x="385" y="55" fill="#33ff9988" font-size="7" text-anchor="middle" transform="rotate(-90,385,55)">A-HI</text>
+  <text x="393" y="55" fill="#cc44ff88" font-size="7" text-anchor="middle" transform="rotate(-90,393,55)">/CE</text>
+  <text x="401" y="55" fill="#ffee0088" font-size="7" text-anchor="middle" transform="rotate(-90,401,55)">DIR</text>
+  <text x="424" y="55" fill="#55555588" font-size="7" text-anchor="middle" transform="rotate(-90,424,55)">GND</text>
 
 </svg>
 </div>
+
 
 <!-- ═══════════════════════════════════════════════════════ -->
 <!--  WIRING TABLES                                          -->
