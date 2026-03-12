@@ -647,12 +647,16 @@ RESET_VECTORS = {
 
 KNOWN_ROMS = {
     # CRC32 of the native (unscrambled) 32KB ROM, lower half of .034 / raw .bin
-    0x609f1f40: ("266D", "Stock",        "893906266D"),
-    0x4152e167: ("266D", "PhysicalRead", "893906266D_MMS05C_HF201Y43"),  # physical chip, pre-tuned
-    0x7739bde5: ("266B", "Stock",        "893906266B"),
-    # AAH 12v V6 (MMS-200 ECU)
-    0x13db1432: ("AAH",  "Stock",        "AAH_12v_V6_MMS200"),
-    0x4818fa0b: ("AAH",  "Stage1",       "AAH_12v_V6_MMS200"),
+    # 266D — Late 7A ECU (4-connector, Hitachi GE002336-2)
+    0x609f1f40: ("266D", "Stock",         "893906266D"),           # 034 RIP Chip stock (idle tweaked)
+    0x4152e167: ("266D", "PhysicalStock", "893906266D_MMS05C"),    # physical chip read — true unmodified OEM
+    # 266B — Early 7A ECU (2-connector)
+    0x7739bde5: ("266B", "Stock",         "893906266B"),
+    # AAH 12v V6 — MMS-200 ECU (4A0906266A, Audi 80/90/Coupe)
+    0x13db1432: ("AAH",  "Stock",         "AAH_12v_V6_MMS200"),
+    0x4818fa0b: ("AAH",  "Stage1",        "AAH_12v_V6_MMS200"),
+    # AAH 12v V6 — MMS-100 ECU (4A0906266, Audi 100/A6 — more aggressive timing)
+    0x6875638d: ("AAH",  "Stock",         "AAH_12v_V6_MMS100"),
 }
 
 BLANK_REGION_START = 0x7E00   # 266B has 0xFF here; 266D has code
@@ -919,7 +923,11 @@ KNOWN_ROM_LIBRARY: List[KnownROM] = [
     KnownROM("034 - 893906266D Big MAF 91Oct R1",                  "266D", "NA",      "BIG_MAF",  "STOCK_7A", "NA Big MAF"),
     KnownROM("034 - 893906266D Stage 1 91Oct R1",                  "266D", "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA"),
     KnownROM("034 Turbo Kit Stage 1 91 R2 893906266B",             "266B", "TurboS1", "STOCK_7A", "STOCK_7A", "Turbo Stage 1 R2"),
-    # AAH 12v V6 (MMS-200 ECU)
-    KnownROM("AAH Stock RIP Chip",                                  "AAH",  "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock V6 AAH 12v"),
-    KnownROM("AAH Stage 1 R1",                                      "AAH",  "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA V6 AAH 12v"),
+    # AAH 12v V6 — MMS-200 (4A0906266A, Audi 80/90/Coupe)
+    KnownROM("AAH Stock RIP Chip (MMS-200)",                        "AAH",  "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock V6 AAH 12v MMS-200"),
+    KnownROM("AAH Stage 1 R1 (MMS-200)",                           "AAH",  "Stage1",  "STOCK_7A", "STOCK_7A", "Stage 1 NA V6 AAH 12v MMS-200"),
+    # AAH 12v V6 — MMS-100 (4A0906266, Audi 100/A6 — more aggressive timing +2-4 deg peak)
+    KnownROM("AAH Stock MMS-100 (4A0906266)",                      "AAH",  "Stock",   "STOCK_7A", "STOCK_7A", "OEM stock V6 AAH 12v MMS-100, Audi 100/A6 variant"),
+    # 266D physical chip read — true OEM baseline
+    KnownROM("266D Physical Chip Read (MMS-05C HF201Y43)",         "266D", "Stock",   "STOCK_7A", "STOCK_7A", "Raw EPROM read, genuine OEM — no idle adjustment"),
 ]

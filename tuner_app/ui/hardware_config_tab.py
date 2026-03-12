@@ -31,19 +31,68 @@ from ecu_profiles import (
 
 BASE_ROMS = {
     # key: (label, ecu_version, base_disp_cc, injector_key, notes)
-    "266D_STOCK":  ("Stock 266D  (OEM 7A Late)",        "266D", 2309, "STOCK_7A",
-                    "Factory stock map. Full closed-loop, conservative timing."),
-    "266D_S1":     ("034 Stage 1 266D  (NA 91oct)",     "266D", 2309, "STOCK_7A",
-                    "034 Stage 1 NA. Optimised timing, stock injectors. No turbo."),
-    "266D_S2_550": ("034 Stage 2 266D  (Turbo 550cc)",  "266D", 2309, "CC550",
-                    "034 Turbo Stage 2. Built for ~2309cc + 550cc injectors + stock MAF housing. "
-                    "Richer fuel map + raised injection scaler. Best starting point for a stroker turbo build."),
-    "266B_STOCK":  ("Stock 266B  (OEM 7A Early)",       "266B", 2309, "STOCK_7A",
-                    "Factory stock map for early 2-connector ECU."),
-    "266B_S2_550": ("034 Stage 2 266B  (Turbo 550cc)",  "266B", 2309, "CC550",
-                    "034 Turbo Stage 2 for early ECU."),
-    "CUSTOM":      ("Custom / Unknown  (load file below)", None, 2309, "STOCK_7A",
-                    "Load any .bin or .034 — ECU version and injectors will be auto-detected."),
+
+    # ── 266D Late 7A  (4-connector ECU) ────────────────────────────────────
+    "266D_PHYSICAL": (
+        "266D Physical Chip  ★ RECOMMENDED (true OEM 7A Late)",
+        "266D", 2309, "STOCK_7A",
+        "Raw EPROM read from MMS-05C chip (lot HF201Y43). True unmodified OEM — "
+        "no idle adjustments vs the 034 RIP Chip file. Best starting point for "
+        "any 266D build. CRC32: 0x4152E167.",
+    ),
+    "266D_STOCK_034": (
+        "266D Stock  (034 RIP Chip — idle-adjusted)",
+        "266D", 2309, "STOCK_7A",
+        "034 Motorsport RIP Chip stock file. Near-identical to OEM but idle "
+        "target raised ~75 rpm, minor scalar tweaks, slightly different interrupt "
+        "vectors vs physical chip. Use the Physical Chip entry above instead.",
+    ),
+    "266D_S2_550": (
+        "266D Stage 2  (034 Turbo, 550cc injectors)",
+        "266D", 2309, "CC550",
+        "034 Turbo Stage 2. Richer fuel map + raised injection scaler, built for "
+        "~2309cc + 550cc injectors + stock MAF housing. Good turbo base.",
+    ),
+
+    # ── 266B Early 7A  (2-connector ECU) ────────────────────────────────────
+    "266B_STOCK": (
+        "266B Stock  (OEM 7A Early — 2-connector ECU)",
+        "266B", 2309, "STOCK_7A",
+        "Factory stock map for early 7A ECU (2-connector board). Same fuel/timing "
+        "addresses as 266D but different Lambda fuel formula and axes.",
+    ),
+    "266B_S2_550": (
+        "266B Stage 2  (034 Turbo, 550cc injectors)",
+        "266B", 2309, "CC550",
+        "034 Turbo Stage 2 for early 2-connector ECU.",
+    ),
+
+    # ── AAH 12v V6  ──────────────────────────────────────────────────────────
+    "AAH_MMS100": (
+        "AAH Stock  MMS-100  (4A0906266 — Audi 100/A6)",
+        "AAH", 2771, "STOCK_7A",
+        "Physical chip file from Audi 100 / A6 AAH application. MMS-100 ECU — "
+        "more aggressive timing than MMS-200 (+2–4° peak). Genuine OEM bin. "
+        "CRC32: 0x6875638D.",
+    ),
+    "AAH_MMS200": (
+        "AAH Stock  MMS-200  (034 RIP Chip — Audi 80/90/Coupe)",
+        "AAH", 2771, "STOCK_7A",
+        "034 RIP Chip stock for MMS-200 ECU (4A0906266A). More common variant "
+        "in Audi 80/90. Slightly less peak timing than MMS-100. CRC32: 0x13DB1432.",
+    ),
+    "AAH_S1_MMS200": (
+        "AAH Stage 1  (034 RIP Chip NA — MMS-200)",
+        "AAH", 2771, "STOCK_7A",
+        "034 Stage 1 NA map for MMS-200. Optimised timing for 91 oct.",
+    ),
+
+    # ── Custom ───────────────────────────────────────────────────────────────
+    "CUSTOM": (
+        "Custom / Unknown  (load file below)",
+        None, 2309, "STOCK_7A",
+        "Load any .bin or .034 — ECU version and injectors will be auto-detected.",
+    ),
 }
 
 def _s(v):
@@ -126,7 +175,7 @@ class HardwareConfigTab(QWidget):
         self.cmb_base.setStyleSheet(_COMBO_STYLE)
         for key, (label, *_) in BASE_ROMS.items():
             self.cmb_base.addItem(label, key)
-        self.cmb_base.setCurrentIndex(list(BASE_ROMS).index("266D_S2_550"))
+        self.cmb_base.setCurrentIndex(list(BASE_ROMS).index("266D_PHYSICAL"))
         self.cmb_base.currentIndexChanged.connect(self._on_base_changed)
         base_row.addWidget(self.cmb_base, 1)
         g1.addLayout(base_row)
@@ -302,6 +351,16 @@ class HardwareConfigTab(QWidget):
             if idx >= 0:
                 self.cmb_inj_from.setCurrentIndex(idx)
 
+        # Set sensible disp_to default per ECU family
+        if ecu_version == "AAH":
+            self.spn_disp_to.setValue(2771)   # AAH is already 2771cc stock
+            self.spn_disp_to.setToolTip("AAH V6 displacement: 2771 cc stock")
+        else:
+            self.spn_disp_to.setValue(2553)   # 7A stroker default (95.6mm crank)
+            self.spn_disp_to.setToolTip(
+                "Your actual engine displacement in cc\n"
+                "2.6L stroker (AAF crank 95.6mm, stock bore) ≈ 2553 cc")
+
         if ecu_version:
             self._ecu_version = ecu_version
 
@@ -311,33 +370,56 @@ class HardwareConfigTab(QWidget):
         self._on_options_changed()
 
     def _load_builtin_rom(self, key: str):
-        """Try to load a matching .034 from the repo rom_files directory."""
+        """Load a bundled base ROM from rom_files/base_roms/ or rom_files/034_rip_chip/."""
+        repo_root = os.path.normpath(
+            os.path.join(os.path.dirname(__file__), "..", ".."))
+
+        # Map key → (relative_path, is_034_scrambled)
         FILE_MAP = {
-            "266D_STOCK":  "rom_files/034_rip_chip/034 - 893906266D Stock.034",
-            "266D_S2_550": "rom_files/034_rip_chip/034 (Audi CQ (7a Turbo Stage 2 550cc 91 R1) - ) - 893906266D.034",
+            # Physical chip reads — raw .bin, no unscrambling needed
+            "266D_PHYSICAL":  ("rom_files/base_roms/266D_MMS05C_physical_stock.bin",  False),
+            "AAH_MMS100":     ("rom_files/base_roms/AAH_MMS100_4A0906266_stock.bin",  False),
+            # 034 RIP Chip files — scrambled, need unscramble
+            "266D_STOCK_034": ("rom_files/034_rip_chip/034 - 893906266D Stock.034",   True),
+            "266D_S2_550":    ("rom_files/034_rip_chip/034 (Audi CQ (7a Turbo Stage 2 550cc 91 R1) - ) - 893906266D.034", True),
+            "266B_STOCK":     ("rom_files/034_rip_chip/034 - 893906266B Stock.034",   True),
+            "266B_S2_550":    ("rom_files/034_rip_chip/034 - 893906266B - Stage 2 91 Octane 550cc Turbo.034", True),
+            "AAH_MMS200":     ("rom_files/034_rip_chip/AAH_Stock_RIP_Chip.034",       True),
+            "AAH_S1_MMS200":  ("rom_files/034_rip_chip/AAH_Stage_1__R1.034",          True),
         }
-        rel = FILE_MAP.get(key)
-        if not rel:
+
+        entry = FILE_MAP.get(key)
+        if not entry:
             self._rom_data = None
             return
 
-        # Walk up from this file to repo root
-        repo_root = os.path.normpath(
-            os.path.join(os.path.dirname(__file__), "..", ".."))
+        rel, is_034 = entry
         full = os.path.join(repo_root, rel)
+
+        # Try the rip_chip directory with original filenames as fallback
+        if not os.path.exists(full) and is_034:
+            rip_dir = os.path.join(repo_root, "rom_files", "034_rip_chip")
+            for fn in os.listdir(rip_dir) if os.path.isdir(rip_dir) else []:
+                if fn.endswith(".034") and key.replace("_", " ").split()[0].lower() in fn.lower():
+                    full = os.path.join(rip_dir, fn)
+                    break
+
         if not os.path.exists(full):
             self._rom_data = None
+            self.lbl_base_notes.setText(
+                BASE_ROMS[key][4] + "\n\n⚠  ROM file not found — use Load File or add to rom_files/base_roms/")
             return
 
         try:
             with open(full, "rb") as f:
                 raw = f.read()
-            self._rom_data = unscramble_rom(raw) if full.lower().endswith(".034") else raw
+            self._rom_data = unscramble_rom(raw) if is_034 else raw
             version = BASE_ROMS[key][1]
             if version:
                 self._ecu_version = version
-        except Exception:
+        except Exception as e:
             self._rom_data = None
+            self.lbl_base_notes.setText(f"⚠  Failed to load ROM: {e}")
 
     def _load_rom(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -432,10 +514,15 @@ class HardwareConfigTab(QWidget):
         has_rom = self._rom_data is not None
 
         entry = BASE_ROMS.get(self._base_key, ("?", None, 2309, "STOCK_7A", ""))
+        import zlib
+        crc_str = ""
+        if self._rom_data:
+            crc = zlib.crc32(self._rom_data[:32768]) & 0xFFFFFFFF
+            crc_str = f"  CRC32: 0x{crc:08X}"
         lines = [
             f"Base tune    :  {entry[0]}",
             f"ECU version  :  {self._ecu_version}",
-            f"ROM loaded   :  {'Yes' if has_rom else '⚠  No ROM — select a base tune'}",
+            f"ROM loaded   :  {'Yes' + crc_str if has_rom else '⚠  No ROM — select a base tune'}",
             "",
         ]
 
