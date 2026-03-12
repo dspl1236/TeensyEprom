@@ -647,11 +647,12 @@ RESET_VECTORS = {
 
 KNOWN_ROMS = {
     # CRC32 of the native (unscrambled) 32KB ROM, lower half of .034 / raw .bin
-    0x609f1f40: ("266D", "Stock",  "893906266D"),
-    0x7739bde5: ("266B", "Stock",  "893906266B"),
+    0x609f1f40: ("266D", "Stock",        "893906266D"),
+    0x4152e167: ("266D", "PhysicalRead", "893906266D_MMS05C_HF201Y43"),  # physical chip, pre-tuned
+    0x7739bde5: ("266B", "Stock",        "893906266B"),
     # AAH 12v V6 (MMS-200 ECU)
-    0x13db1432: ("AAH",  "Stock",  "AAH_12v_V6_MMS200"),
-    0x4818fa0b: ("AAH",  "Stage1", "AAH_12v_V6_MMS200"),
+    0x13db1432: ("AAH",  "Stock",        "AAH_12v_V6_MMS200"),
+    0x4818fa0b: ("AAH",  "Stage1",       "AAH_12v_V6_MMS200"),
 }
 
 BLANK_REGION_START = 0x7E00   # 266B has 0xFF here; 266D has code
