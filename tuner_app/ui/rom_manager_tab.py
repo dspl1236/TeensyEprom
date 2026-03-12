@@ -317,12 +317,13 @@ class OfflineRomEditor(QWidget):
         self.btn_saveas   = QPushButton("💾  Save As .bin...")
         self.btn_save512  = QPushButton("💾  Save As 27C512 .bin")
         self.btn_save512.setToolTip(
-            "Save a 64KB file padded for a 27C512 EPROM.\n"
-            "Your 32KB ROM is placed in the UPPER half (0x8000–0xFFFF).\n"
-            "Lower half (0x0000–0x7FFF) is filled with 0xFF (erased).\n\n"
-            "Most EPROM programmers address the 27C512 at its full 64KB range.\n"
-            "Burning this file directly gives you the correct upper-half placement\n"
-            "without needing to remember any offset in your programmer software.")
+            "Save a 64KB file for burning to a 27C512 EPROM.\n"
+            "The 32KB ROM is mirrored into BOTH halves of the chip:\n"
+            "  Lower half 0x0000–0x7FFF = ROM\n"
+            "  Upper half 0x8000–0xFFFF = ROM\n\n"
+            "A15 state doesn't matter — whichever bank the ECU reads\n"
+            "it gets identical data. Drop the chip straight in, no pin\n"
+            "modifications or programmer offsets needed.")
         self.lbl_file   = QLabel("No file loaded  —  open a .bin or download from Teensy")
         self.lbl_file.setStyleSheet("color: #3d5068; font-size: 11px;")
         self.lbl_dirty  = QLabel("")
@@ -870,8 +871,10 @@ class OfflineRomEditor(QWidget):
             # get_data() returns checksummed 32KB (or 64KB mirrored)
             rom32 = self.get_data()[:32768]
 
-            # 64KB image: lower half = 0xFF, upper half = ROM
-            image = bytearray(b'\xff' * 32768) + bytearray(rom32)
+            # 64KB image: ROM mirrored into both halves
+            # Lower 0x0000-0x7FFF = ROM, Upper 0x8000-0xFFFF = ROM
+            # A15 state doesn't matter — same data either way, no pin mods needed
+            image = bytearray(rom32) + bytearray(rom32)
 
             with open(path, "wb") as f:
                 f.write(bytes(image))
@@ -887,10 +890,11 @@ class OfflineRomEditor(QWidget):
                 self, "27C512 Image Saved",
                 f"Saved:  {os.path.basename(path)}\n\n"
                 f"File size : 65,536 bytes (64KB)\n"
-                f"ROM data  : upper half  0x8000 – 0xFFFF\n"
-                f"Pad bytes : lower half  0x0000 – 0x7FFF  (0xFF)\n"
+                f"Lower half: 0x0000 – 0x7FFF  (ROM copy 1)\n"
+                f"Upper half: 0x8000 – 0xFFFF  (ROM copy 2)\n"
                 f"CRC32     : {crc:#010x}\n\n"
-                "Burn this file to your 27C512 with no address offset.\n"
+                "ROM is mirrored into both halves — drop the chip straight\n"
+                "into the socket, no pin modifications needed.\n"
                 "Checksum has been corrected automatically.")
         except Exception as e:
             QMessageBox.critical(self, "Save Error", str(e))
