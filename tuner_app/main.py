@@ -6,6 +6,10 @@ Main entry point
 
 import sys
 import os
+
+# Initialize HachiROM submodule path before any other imports
+import hachirom_init  # noqa: F401 — side-effect import, adds hachirom to sys.path
+
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QIcon, QFontDatabase, QFont
 from PyQt5.QtCore import Qt

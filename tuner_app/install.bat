@@ -13,6 +13,14 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
+echo Initializing HachiROM submodule...
+git submodule update --init --recursive
+if %ERRORLEVEL% NEQ 0 (
+    echo WARNING: Could not initialize HachiROM submodule.
+    echo Run: git submodule update --init --recursive
+)
+
+echo.
 echo Installing dependencies...
 pip install PyQt5 pyserial matplotlib pyinstaller --quiet
 if %ERRORLEVEL% NEQ 0 (

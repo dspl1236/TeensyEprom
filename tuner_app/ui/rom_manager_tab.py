@@ -30,6 +30,23 @@ from ecu_profiles import (
     detect_ecu_version, KNOWN_ROM_LIBRARY, ECU_MAPS,
 )
 
+# HachiROM — source of truth for ROM detection, compare, and checksum
+try:
+    from hachirom.bridge import (
+        detect as hr_detect,
+        compare_roms as hr_compare,
+        diff_summary as hr_diff_summary,
+        load_bin as hr_load_bin,
+        save_bin as hr_save_bin,
+        unscramble_034 as hr_unscramble,
+        get_flat_fuel_map as hr_get_fuel_flat,
+        get_flat_timing_map as hr_get_timing_flat,
+        set_cell as hr_set_cell,
+    )
+    HACHIROM_AVAILABLE = True
+except ImportError:
+    HACHIROM_AVAILABLE = False
+
 FUEL_MAP_ADDR   = 0x0000   # 266D Primary Fueling  — 16×16 = 256 bytes (native ROM space)
 TIMING_MAP_ADDR = 0x0100   # 266D Primary Timing   — 16×16 = 256 bytes (native ROM space)
 ROM_SIZE        = 65536
