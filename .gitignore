@@ -1,2 +1,9 @@
 *.pyc
 __pycache__/
+.pio/
+*.o
+*.a
+*.elf
+*.hex
+*.bin
+!rom_files/*.bin

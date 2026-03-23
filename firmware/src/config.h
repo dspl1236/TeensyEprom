@@ -1,110 +1,95 @@
 // =============================================================================
-// config.h — Pin assignments and compile-time constants
-// Teensy 4.1
+//  config.h — TeensyEprom pin assignments and configuration
+//
+//  Teensy 4.1 EPROM emulator — replaces 27C256/27C512 in any parallel-bus ECU.
+//
+//  Hardware:
+//    Teensy 4.1 (IMXRT1062, 600MHz, 3.3V GPIO — NOT 5V tolerant)
+//    2x 74HCT245 @ 3.3V Vcc — address bus level shift (ECU 5V -> Teensy 3.3V)
+//    Data bus direct — Teensy 3.3V outputs meet ECU TTL VIH (>2.0V)
+//    /OE, /CE — 1k series resistors (5V -> 3.3V clamp via Teensy internal diodes)
+//
+//  Power:
+//    EPROM socket pin 28 (Vcc) provides 5V from the ECU.
+//    Connect to Teensy Vin pin — the onboard regulator drops to 3.3V.
+//    This powers the Teensy, SD card, and both 74HCT245s (from 3.3V rail).
+//    USB can be connected simultaneously for serial commands.
 // =============================================================================
 #pragma once
 
 // ---------------------------------------------------------------------------
 // ROM
 // ---------------------------------------------------------------------------
-#define ROM_SIZE              65536
-#define ROM_ACTIVE_SIZE       32768
-#define ROM_FILENAME          "tune.bin"
-#define ROM_FALLBACK_FILENAME "stock.bin"
+#define ROM_SIZE              65536    // 27C512 = 64KB (or 27C256 mirrored)
+#define ROM_ACTIVE_SIZE       32768    // Most ECUs use 32KB, mirrored to fill 64KB
+#define MAX_MAPS              16       // Maximum ROM slots
 
 // ---------------------------------------------------------------------------
-// EPROM emulator — FlexIO address/data bus
-// Prefixed EPROM_ to avoid conflicts with Teensyduino PIN_A0-PIN_A15 defines.
+// Storage — LittleFS on internal program flash (primary)
 // ---------------------------------------------------------------------------
-#define EPROM_A0    19
-#define EPROM_A1    18
-#define EPROM_A2    17
-#define EPROM_A3    16
-#define EPROM_A4    15
-#define EPROM_A5    14
-#define EPROM_A6    40
-#define EPROM_A7    41
-#define EPROM_A8    42
-#define EPROM_A9    43
-#define EPROM_A10   44
-#define EPROM_A11   45
-#define EPROM_A12   6
-#define EPROM_A13   9
-#define EPROM_A14   32
-#define EPROM_A15   8
+// Teensy 4.1 has 8MB flash. Firmware uses ~200KB. We reserve 1MB at the
+// end for LittleFS. 16 x 32KB = 512KB fits with room to spare.
+//
+// SD card is fallback only — checked at boot if LittleFS has no maps.
+// This avoids SD reliability issues (vibration, heat, contact oxidation).
+#define LFS_SIZE              (1024 * 1024)   // 1MB for ROM filesystem
+#define MAP_DIR               "/maps/"        // directory for ROM files (LittleFS)
+#define ACTIVE_FILE           "/active.txt"   // persists active map index
 
-#define EPROM_D0    2
-#define EPROM_D1    3
-#define EPROM_D2    4
-#define EPROM_D3    5
-#define EPROM_D4    33
-#define EPROM_D5    34
-#define EPROM_D6    35
-#define EPROM_D7    36
-
-#define EPROM_OE    37
-#define EPROM_CE    38
+// SD card fallback
+#define SD_MAP_DIR            "maps/"         // SD card directory
+#define SD_FALLBACK_FILE      "tune.bin"
 
 // ---------------------------------------------------------------------------
-// Wideband — Spartan 3 Lite OEM UART
+// Address bus — 16 lines via 2x 74HCT245 @ 3.3V (ECU 5V -> Teensy 3.3V)
 // ---------------------------------------------------------------------------
-#define WIDEBAND_SERIAL   Serial1
-#define WIDEBAND_BAUD     9600
-#define PIN_WB_RX         0
-#define AFR_MIN           10.0f
-#define AFR_MAX           20.0f
-#define AFR_TARGET        14.7f
+static const uint8_t ADDR_PINS[16] = {
+//  A0  A1  A2  A3  A4  A5  A6  A7      <- U1 B-side
+     2,  3,  4,  5,  6,  7,  8,  9,
+//  A8  A9 A10 A11 A12 A13 A14 A15      <- U2 B-side
+    10, 11, 12, 24, 25, 26, 27, 28
+};
 
 // ---------------------------------------------------------------------------
-// Sensors
+// Data bus — 8 lines direct to DIP-28 (no level shifter needed)
 // ---------------------------------------------------------------------------
-#define PIN_MAP           A1
-#define MAP_V_MIN         0.5f
-#define MAP_V_MAX         4.5f
-#define MAP_KPA_MIN       10.0f
-#define MAP_KPA_MAX       304.0f
-
-#define PIN_KNOCK         A2
-#define KNOCK_BIAS_V      1.65f
-#define KNOCK_THRESHOLD_V 0.3f
-
-#define PIN_TPS           A3
-#define TPS_V_MIN         0.5f
-#define TPS_V_MAX         4.5f
-
-#define PIN_IAT           A4
-#define PIN_RPM           7
+static const uint8_t DATA_PINS[8] = {
+//  D0  D1  D2  D3  D4  D5  D6  D7
+    14, 15, 16, 17, 18, 19, 20, 21
+};
 
 // ---------------------------------------------------------------------------
-// Injector intercept — IRLZ44N MOSFETs
+// Control signals — 1k series resistors (5V -> 3.3V via internal clamp)
 // ---------------------------------------------------------------------------
-#define PIN_INJ0      24
-#define PIN_INJ1      25
-#define PIN_INJ2      26
-#define PIN_INJ3      27
-#define INJ_TRIM_MAX  0.15f
+static const uint8_t PIN_OE = 29;     // /OE (output enable, active LOW)
+static const uint8_t PIN_CE = 30;     // /CE (chip enable, active LOW)
 
 // ---------------------------------------------------------------------------
-// MAF intercept
+// Map switcher
 // ---------------------------------------------------------------------------
-#define MAF_INPUT_FREQUENCY  0
-#define MAF_INPUT_ANALOG     1
-#define MAF_INPUT_TYPE       MAF_INPUT_FREQUENCY
-#define PIN_MAF_IN           20
-#define PIN_MAF_OUT          21
-#define MAF_DISPLACEMENT_FACTOR  1.130f
+static const uint8_t PIN_BUTTON = 31;  // Momentary switch, active LOW (internal pull-up)
+static const uint8_t PIN_LED    = 13;  // Onboard Teensy LED
 
 // ---------------------------------------------------------------------------
-// SD / Datalogger
+// Timing
 // ---------------------------------------------------------------------------
-#define SD_CS                BUILTIN_SDCARD
-#define DATALOG_INTERVAL_MS  100
+#define DEBOUNCE_MS          50
+#define LED_BLINK_MS         200
+#define BUTTON_HOLD_MS       1000     // Hold for previous map
 
 // ---------------------------------------------------------------------------
-// Corrections
+// Upload protocol
 // ---------------------------------------------------------------------------
-#define FUEL_TRIM_MAX     0.10f
-#define FUEL_TRIM_STEP    0.002f
-#define KNOCK_RETARD_DEG  2.0f
-#define KNOCK_RETARD_MAX  10.0f
-#define KNOCK_RECOVER_DEG 0.5f
+// Binary upload with CRC32 verification:
+//   Host: UPLOAD <filename> <size>\n
+//   Dev:  READY <size>\n
+//   Host: <size raw bytes> <4-byte CRC32 big-endian>
+//   Dev:  OK <filename> <size> CRC32=XXXXXXXX\n
+//      or ERR: <reason>\n
+#define UPLOAD_TIMEOUT_MS    10000    // 10s timeout for binary transfer
+
+// ---------------------------------------------------------------------------
+// Ident
+// ---------------------------------------------------------------------------
+#define FW_VERSION           "2.0"
+#define IDENT_STRING         "TeensyEprom v" FW_VERSION "\n"
