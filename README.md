@@ -2,6 +2,9 @@
 
 **Teensy 4.1 EPROM emulator — drop-in replacement for 27C256 / 27C512 chips.**
 
+[![Build](https://github.com/dspl1236/TeensyEprom/actions/workflows/build.yml/badge.svg)](https://github.com/dspl1236/TeensyEprom/actions/workflows/build.yml)
+[![Download](https://img.shields.io/github/v/release/dspl1236/TeensyEprom?label=Download&logo=github)](https://github.com/dspl1236/TeensyEprom/releases/latest)
+
 > **⚠ Work in Progress — Use at Your Own Risk**
 >
 > This project is under active development. Always keep a known-good
