@@ -86,34 +86,105 @@ DIP-28 pin 14 (GND)              → Teensy GND
 Teensy's onboard regulator drops 5V to 3.3V for the MCU and 74HCT245s.
 USB can be connected simultaneously for serial commands.
 
-### 74HCT245 Wiring
+### Complete Pin-to-Pin Connection Table
 
-Both 74HCT245s are wired identically:
-- Vcc = Teensy 3.3V pin
-- GND = common ground
-- DIR = GND (A→B direction, ECU→Teensy)
-- /OE = GND (always enabled)
+Wire everything from this table. Check off each row as you go.
 
-**U1 — Address Low Byte:**
+**U1 — 74HCT245 Address Low Byte (DIP-20):**
 
-| 245 Pin | Signal | Connects to |
-|---------|--------|-------------|
-| A1-A8 | DIP A0-A7 | ECU address bus (5V) |
-| B1-B8 | → | Teensy pins 2, 3, 4, 5, 6, 7, 8, 9 |
+| U1 pin | U1 function | Wire to            | Signal |
+|--------|-------------|---------------------|--------|
+| 1      | DIR         | GND                 | A→B direction |
+| 2      | A1 (input)  | DIP-28 pin 10       | A0 (5V) |
+| 3      | A2 (input)  | DIP-28 pin 9        | A1 (5V) |
+| 4      | A3 (input)  | DIP-28 pin 8        | A2 (5V) |
+| 5      | A4 (input)  | DIP-28 pin 7        | A3 (5V) |
+| 6      | A5 (input)  | DIP-28 pin 6        | A4 (5V) |
+| 7      | A6 (input)  | DIP-28 pin 5        | A5 (5V) |
+| 8      | A7 (input)  | DIP-28 pin 4        | A6 (5V) |
+| 9      | A8 (input)  | DIP-28 pin 3        | A7 (5V) |
+| 10     | GND         | GND                 | |
+| 11     | B8 (output) | Teensy pin 9        | A7 (3.3V) |
+| 12     | B7 (output) | Teensy pin 8        | A6 (3.3V) |
+| 13     | B6 (output) | Teensy pin 7        | A5 (3.3V) |
+| 14     | B5 (output) | Teensy pin 6        | A4 (3.3V) |
+| 15     | B4 (output) | Teensy pin 5        | A3 (3.3V) |
+| 16     | B3 (output) | Teensy pin 4        | A2 (3.3V) |
+| 17     | B2 (output) | Teensy pin 3        | A1 (3.3V) |
+| 18     | B1 (output) | Teensy pin 2        | A0 (3.3V) |
+| 19     | /OE         | GND                 | Always enabled |
+| 20     | Vcc         | Teensy 3.3V pin     | 3.3V power |
 
-**U2 — Address High Byte:**
+**U2 — 74HCT245 Address High Byte (DIP-20):**
 
-| 245 Pin | Signal | Connects to |
-|---------|--------|-------------|
-| A1-A8 | DIP A8-A15 | ECU address bus (5V) |
-| B1-B8 | → | Teensy pins 10, 11, 12, 24, 25, 26, 27, 28 |
+| U2 pin | U2 function | Wire to            | Signal |
+|--------|-------------|---------------------|--------|
+| 1      | DIR         | GND                 | A→B direction |
+| 2      | A1 (input)  | DIP-28 pin 25       | A8 (5V) |
+| 3      | A2 (input)  | DIP-28 pin 24       | A9 (5V) |
+| 4      | A3 (input)  | DIP-28 pin 21       | A10 (5V) |
+| 5      | A4 (input)  | DIP-28 pin 23       | A11 (5V) |
+| 6      | A5 (input)  | DIP-28 pin 2        | A12 (5V) |
+| 7      | A6 (input)  | DIP-28 pin 26       | A13 (5V) |
+| 8      | A7 (input)  | DIP-28 pin 27       | A14 (5V) |
+| 9      | A8 (input)  | DIP-28 pin 1        | A15 (5V) |
+| 10     | GND         | GND                 | |
+| 11     | B8 (output) | Teensy pin 28       | A15 (3.3V) |
+| 12     | B7 (output) | Teensy pin 27       | A14 (3.3V) |
+| 13     | B6 (output) | Teensy pin 26       | A13 (3.3V) |
+| 14     | B5 (output) | Teensy pin 25       | A12 (3.3V) |
+| 15     | B4 (output) | Teensy pin 24       | A11 (3.3V) |
+| 16     | B3 (output) | Teensy pin 12       | A10 (3.3V) |
+| 17     | B2 (output) | Teensy pin 11       | A9 (3.3V) |
+| 18     | B1 (output) | Teensy pin 10       | A8 (3.3V) |
+| 19     | /OE         | GND                 | Always enabled |
+| 20     | Vcc         | Teensy 3.3V pin     | 3.3V power |
+
+**Data Bus — Direct (no buffer):**
+
+| DIP-28 pin | Signal | Teensy pin |
+|------------|--------|------------|
+| 11         | D0     | 14         |
+| 12         | D1     | 15         |
+| 13         | D2     | 16         |
+| 15         | D3     | 17         |
+| 16         | D4     | 18         |
+| 17         | D5     | 19         |
+| 18         | D6     | 20         |
+| 19         | D7     | 21         |
+
+**Control Signals — via 1kΩ resistor:**
+
+| DIP-28 pin | Signal | Resistor | Teensy pin |
+|------------|--------|----------|------------|
+| 22         | /OE    | R1 1kΩ   | 29         |
+| 20         | /CE    | R2 1kΩ   | 30         |
+
+**Power:**
+
+| From | To | Notes |
+|------|----|-------|
+| DIP-28 pin 28 (Vcc) | Teensy Vin | 5V from ECU powers everything |
+| DIP-28 pin 14 (GND) | Teensy GND | Common ground |
+| Teensy 3.3V pin | U1 pin 20, U2 pin 20 | 3.3V rail for both 245s |
+| DIP-28 pin 1 (Vpp) | DIP-28 pin 28 (Vcc) | Tie Vpp to Vcc (or leave to U2 — it's A15) |
+
+**Button (optional):**
+
+| From | To | Notes |
+|------|----|-------|
+| Teensy pin 31 | SW1 terminal 1 | Internal pull-up enabled in firmware |
+| SW1 terminal 2 | GND | Short press = next map, long press = previous |
 
 ### Bypass Caps
 
-Place 0.1µF ceramic caps as close as possible to each IC:
-- C1: U1 Vcc to GND
-- C2: U2 Vcc to GND
-- C3: Teensy 3.3V to GND (near address pin cluster)
+Place 0.1µF ceramic caps as close as possible to each IC's power pins:
+
+| Cap | Between | Near |
+|-----|---------|------|
+| C1  | U1 pin 20 (Vcc) and U1 pin 10 (GND) | U1 |
+| C2  | U2 pin 20 (Vcc) and U2 pin 10 (GND) | U2 |
+| C3  | Teensy 3.3V and Teensy GND | Near Teensy |
 
 ## DIP-28 Pinout (27C256 / 27C512)
 
