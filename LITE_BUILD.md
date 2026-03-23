@@ -147,12 +147,12 @@ with DIR=HIGH (B→A) for the data bus. This is optional.
 | DIP-28 Pin | Signal | Connects To |
 |------------|--------|-------------|
 | 14 | GND | Common ground (Teensy GND) |
-| 28 | Vcc | **Leave unconnected** or 3.3V — see note |
+| 28 | Vcc | **Teensy Vin** (5V from ECU powers everything) |
 
-> **DIP-28 Pin 28 (Vcc):** The original EPROM runs at 5V. The Teensy is
-> powered separately via USB or its own regulator. Connect pin 28 to 3.3V
-> ONLY if U1/U2 need a local Vcc tie point. Do NOT connect to 5V — it
-> would back-feed into the 3.3V rail through the 74HCT245 protection diodes.
+> **DIP-28 Pin 28 (Vcc):** The ECU supplies 5V on this pin. Connect directly
+> to Teensy Vin — the onboard regulator drops to 3.3V for the MCU and
+> 74HCT245s. No USB power needed once installed. USB can be connected
+> simultaneously for ROM management (Teensy handles dual power safely).
 
 ### Map Switch Button (Optional)
 
@@ -173,76 +173,99 @@ Place 0.1µF ceramic caps as close as possible to each IC:
 | C2 | U2 (74HCT245) | Pin 20 | Pin 10 |
 | C3 | Teensy | 3.3V | GND |
 
-## SD Card Setup
+## ROM Storage
 
-Format micro SD as **FAT32**. Two options for ROM files:
+ROMs are stored in the Teensy's internal program flash (LittleFS). No SD card
+required for daily use — flash has no moving parts, no contacts to oxidize,
+and survives engine bay heat and vibration.
 
-**Option A — maps/ folder (recommended for multiple maps):**
+**16 slots** available (0–15). Each holds a 32KB or 64KB ROM file.
+32KB files are automatically mirrored to fill 64KB (A15-agnostic).
+
+### Loading ROMs — Desktop App (recommended)
+
+```bash
+pip install pyserial                             # one-time setup
+python app/teensy_eprom.py upload 0 stock.bin    # upload to slot 0
+python app/teensy_eprom.py upload 1 stage1.bin   # upload to slot 1
+python app/teensy_eprom.py upload 2 stage2.bin   # upload to slot 2
+python app/teensy_eprom.py list                  # verify
+python app/teensy_eprom.py switch 1              # activate slot 1
 ```
-SD:/
+
+Or run `python app/teensy_eprom.py` for interactive mode.
+
+### Loading ROMs — SD Card Fallback
+
+If the flash is empty at boot and an SD card is inserted, the firmware will
+automatically import `.bin` files from the `maps/` directory into flash slots.
+This is useful for first-time setup or recovery.
+
+```
+SD (FAT32):
 └── maps/
-    ├── 01_stock.bin
-    ├── 02_stage1.bin
-    └── 03_stage2.bin
+    ├── stock.bin       → imported to slot 0
+    ├── stage1.bin      → imported to slot 1
+    └── stage2.bin      → imported to slot 2
 ```
 
-**Option B — root (simple, single/dual map):**
-```
-SD:/
-├── tune.bin     ← loaded first
-└── stock.bin    ← fallback
-```
-
-Files must be 32KB (32,768 bytes) or 64KB (65,536 bytes).
-32KB files are automatically mirrored into both halves (A15-agnostic).
+After import, the SD card can be removed. ROMs live in flash permanently
+until overwritten or deleted via USB.
 
 ## Firmware Upload
 
 ```bash
 cd firmware
-pio run -c platformio_lite.ini -e teensy_lite --target upload
+pio run --target upload
 ```
 
-Or use Arduino IDE with Teensy 4.1 board selected, open
-`firmware/src/lite/main_lite.cpp`.
+Or use Arduino IDE with Teensy 4.1 board selected.
 
 ## USB Serial Commands
 
-Connect via serial monitor at 115200 baud:
+Connect via serial monitor at 115200 baud, or use the desktop app:
 
 | Command | Description |
 |---------|-------------|
-| `INFO` | Firmware version, active map, status |
-| `LIST` | List all maps (* = active) |
-| `MAP 2` | Switch to map index 2 |
-| `DUMP` | Print first 16 bytes of active ROM |
+| `INFO` | Firmware version, active slot, status |
+| `LIST` | List all ROM slots (* = active) |
+| `MAP 2` | Switch to slot 2 |
+| `UPLOAD 0 32768` | Upload 32KB ROM to slot 0 (binary follows) |
+| `DELETE 3` | Erase slot 3 |
+| `DUMP 0 256` | Hex dump 256 bytes from offset 0 |
+| `IMPORT` | Import ROMs from SD card |
+| `FORMAT` | Erase all slots |
 
 ## LED Status
 
 | Pattern | Meaning |
 |---------|---------|
 | 3 slow blinks | Boot OK, emulation active |
-| N blinks | Switched to map N |
-| Rapid blink | Fatal error (no SD / no ROM files) |
+| N blinks | Switched to slot N |
+| 10 fast blinks | No ROMs loaded — upload via USB or insert SD |
+| Rapid blink (continuous) | Fatal error (flash init failed) |
 
 ## First Power-On Checklist
 
 1. [ ] Verify all wiring against tables above (twice)
-2. [ ] SD card inserted with at least one .bin file
-3. [ ] DIP-28 socket NOT installed in ECU yet
-4. [ ] Connect Teensy via USB
-5. [ ] Open serial monitor — confirm "EPROM active"
-6. [ ] Verify ROM loaded: type `DUMP` — should show non-zero data
-7. [ ] Measure voltages: 3.3V on U1/U2 Vcc, GND on DIR and /OE pins
-8. [ ] Install DIP-28 socket in ECU, connect ribbon cable
-9. [ ] Key on — ECU should boot normally
-10. [ ] If no start: revert to programmed EPROM, check wiring
+2. [ ] DIP-28 socket NOT installed in ECU yet
+3. [ ] Connect Teensy via USB
+4. [ ] Flash firmware: `cd firmware && pio run --target upload`
+5. [ ] Open serial monitor — confirm "TeensyEprom v2.0"
+6. [ ] Upload a ROM: `python app/teensy_eprom.py upload 0 your_stock.bin`
+7. [ ] Verify: type `DUMP` — should show non-zero data
+8. [ ] Measure voltages: 3.3V on U1/U2 Vcc, GND on DIR and /OE pins
+9. [ ] Install DIP-28 socket in ECU, connect to Teensy
+10. [ ] Connect DIP-28 pin 28 (Vcc) to Teensy Vin, pin 14 (GND) to Teensy GND
+11. [ ] Key on — ECU should boot normally (3 slow blinks)
+12. [ ] If no start: revert to programmed EPROM, check wiring
 
 ## Troubleshooting
 
 | Symptom | Check |
 |---------|-------|
-| Rapid LED blink | SD card missing or no .bin files found |
+| 10 fast blinks | No ROMs in flash — upload via USB or insert SD card |
+| Rapid continuous blink | Flash init failed — re-flash firmware |
 | No serial output | USB cable, Teensy powered? |
 | ECU doesn't boot | Verify /OE and /CE wiring, check data bus connections |
 | ECU boots but runs rough | Wrong ROM file, or address bus wiring error |

@@ -56,9 +56,9 @@ Any ECU using a DIP-28 27C256 or 27C512 with parallel address/data bus.
 
 1. **Wire it up** — Follow [LITE_BUILD.md](LITE_BUILD.md) for connections
 2. **Flash firmware** — `cd firmware && pio run --target upload`
-3. **Upload a ROM** — `python app/teensy_eprom.py upload your_tune.bin`
+3. **Upload a ROM** — `python app/teensy_eprom.py upload 0 your_tune.bin`
 4. **Install** — Plug DIP-28 socket into ECU where the EPROM was
-5. **Go** — Key on, 3 slow LED blinks = running. Button press = next map.
+5. **Go** — Key on, 3 slow LED blinks = running. Button press = next slot.
 
 ## Power
 
@@ -78,29 +78,28 @@ USB can be connected simultaneously for serial commands.
 pip install pyserial
 
 python app/teensy_eprom.py                          # interactive mode
-python app/teensy_eprom.py upload tune.bin           # upload ROM
-python app/teensy_eprom.py upload tune.bin stage2.bin  # upload with custom name
-python app/teensy_eprom.py list                      # list maps
-python app/teensy_eprom.py switch 2                  # switch to map index 2
-python app/teensy_eprom.py info                      # device info
-python app/teensy_eprom.py delete /maps/old.bin      # remove a map
+python app/teensy_eprom.py upload 0 stock.bin       # upload to slot 0
+python app/teensy_eprom.py upload 1 stage1.bin      # upload to slot 1
+python app/teensy_eprom.py upload 2 stage2.bin      # upload to slot 2
+python app/teensy_eprom.py list                     # list all slots
+python app/teensy_eprom.py switch 1                 # switch to slot 1
+python app/teensy_eprom.py info                     # device info
+python app/teensy_eprom.py delete 2                 # erase slot 2
 ```
-
-Upload verifies data integrity with CRC32 — no silent corruption.
 
 ## USB Serial Commands
 
 Connect at 115200 baud:
 
 ```
-INFO                          — firmware version + storage status
-LIST                          — show all maps (* = active)
-MAP 2                         — switch to map index 2
-DUMP                          — hex dump first 256 bytes
-UPLOAD /maps/tune.bin 32768   — binary upload (use desktop app)
-DELETE /maps/old.bin          — remove a map
-FORMAT                        — erase all ROMs from flash
-RESCAN                        — re-scan map directory
+INFO                     — firmware version + storage status
+LIST                     — show all slots (* = active)
+MAP 2                    — switch to slot 2
+UPLOAD 0 32768           — upload 32KB ROM to slot 0 (binary follows)
+DELETE 3                 — erase slot 3
+DUMP 0 256               — hex dump 256 bytes from offset 0
+IMPORT                   — import ROMs from SD card to flash
+FORMAT                   — erase all ROM slots
 ```
 
 ## LED Status
@@ -108,9 +107,9 @@ RESCAN                        — re-scan map directory
 | Pattern | Meaning |
 |---------|---------|
 | 3 slow blinks at boot | Running, ROM loaded |
-| N blinks after switch | Switched to map index N |
-| Solid on | Waiting for first ROM upload |
-| Fast blink (panic) | Fatal error — no storage |
+| N blinks after switch | Switched to slot N |
+| 10 fast blinks | No ROMs — upload via USB or insert SD card |
+| Rapid blink (continuous) | Fatal error — flash init failed |
 
 ## Project Structure
 
