@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 680 720">
+<style>
+  text { font-family: sans-serif; }
+  .th { font-size: 14px; font-weight: 500; fill: #3d3d3a; }
+  .ts { font-size: 12px; fill: #73726c; }
+  .box-teal { fill: #E1F5EE; stroke: #0F6E56; }
+  .box-blue { fill: #E6F1FB; stroke: #185FA5; }
+  .box-purple { fill: #EEEDFE; stroke: #534AB7; }
+  .box-green { fill: #EAF3DE; stroke: #3B6D11; }
+  .box-coral { fill: #FAECE7; stroke: #993C1D; }
+  .box-amber { fill: #FAEEDA; stroke: #854F0B; }
+  .box-gray { fill: #F1EFE8; stroke: #5F5E5A; }
+  .t-teal { fill: #085041; } .ts-teal { fill: #0F6E56; }
+  .t-blue { fill: #0C447C; } .ts-blue { fill: #185FA5; }
+  .t-purple { fill: #3C3489; } .ts-purple { fill: #534AB7; }
+  .t-green { fill: #27500A; }
+  .t-coral { fill: #712B13; }
+  .t-amber { fill: #633806; } .ts-amber { fill: #854F0B; }
+  .t-gray { fill: #444441; }
+</style>
+
+<!-- Title -->
+<text class="th" x="340" y="24" text-anchor="middle">TeensyEprom wiring schematic</text>
+<text class="ts" x="340" y="42" text-anchor="middle">Teensy 4.1 EPROM emulator — 27C256 / 27C512 replacement</text>
+
+<!-- DIP-28 SOCKET -->
+<rect class="box-teal" x="30" y="62" width="130" height="540" rx="8" stroke-width="0.5"/>
+<text class="t-teal" x="95" y="86" text-anchor="middle" font-size="14" font-weight="500">DIP-28 socket</text>
+<text class="ts-teal" x="95" y="102" text-anchor="middle">27C256 / 27C512</text>
+
+<text class="ts" x="48" y="132" dominant-baseline="central">1  Vpp/A15</text>
+<text class="ts" x="48" y="152" dominant-baseline="central">2  A12</text>
+<text class="ts" x="48" y="172" dominant-baseline="central">3  A7</text>
+<text class="ts" x="48" y="192" dominant-baseline="central">4  A6</text>
+<text class="ts" x="48" y="212" dominant-baseline="central">5  A5</text>
+<text class="ts" x="48" y="232" dominant-baseline="central">6  A4</text>
+<text class="ts" x="48" y="252" dominant-baseline="central">7  A3</text>
+<text class="ts" x="48" y="272" dominant-baseline="central">8  A2</text>
+<text class="ts" x="48" y="292" dominant-baseline="central">9  A1</text>
+<text class="ts" x="48" y="312" dominant-baseline="central">10 A0</text>
+<text class="ts" x="48" y="332" dominant-baseline="central">11 D0</text>
+<text class="ts" x="48" y="352" dominant-baseline="central">12 D1</text>
+<text class="ts" x="48" y="372" dominant-baseline="central">13 D2</text>
+<text class="ts" x="48" y="392" dominant-baseline="central">14 GND</text>
+<text class="ts" x="48" y="418" dominant-baseline="central">28 Vcc (5V)</text>
+<text class="ts" x="48" y="438" dominant-baseline="central">27 A14</text>
+<text class="ts" x="48" y="458" dominant-baseline="central">26 A13</text>
+<text class="ts" x="48" y="478" dominant-baseline="central">25 A8</text>
+<text class="ts" x="48" y="498" dominant-baseline="central">24 A9</text>
+<text class="ts" x="48" y="518" dominant-baseline="central">23 A11</text>
+<text class="ts" x="48" y="538" dominant-baseline="central">22 /OE</text>
+<text class="ts" x="48" y="558" dominant-baseline="central">21 A10</text>
+<text class="ts" x="48" y="578" dominant-baseline="central">20 /CE</text>
+<text class="ts" x="48" y="592" dominant-baseline="central">19 D7  18 D6</text>
+
+<!-- U1: 74HCT245 Addr Low -->
+<rect class="box-blue" x="220" y="120" width="140" height="210" rx="8" stroke-width="0.5"/>
+<text class="t-blue" x="290" y="146" text-anchor="middle" font-size="14" font-weight="500">U1: 74HCT245</text>
+<text class="ts-blue" x="290" y="164" text-anchor="middle">Addr low A0–A7</text>
+<text class="ts" x="236" y="192" dominant-baseline="central">A0 → B0</text>
+<text class="ts" x="236" y="210" dominant-baseline="central">A1 → B1</text>
+<text class="ts" x="236" y="228" dominant-baseline="central">A2 → B2</text>
+<text class="ts" x="236" y="246" dominant-baseline="central">A3 → B3</text>
+<text class="ts" x="236" y="264" dominant-baseline="central">A4 → B4</text>
+<text class="ts" x="236" y="282" dominant-baseline="central">A5 → B5</text>
+<text class="ts" x="236" y="300" dominant-baseline="central">A6 → B6</text>
+<text class="ts" x="236" y="318" dominant-baseline="central">A7 → B7</text>
+
+<!-- U2: 74HCT245 Addr High -->
+<rect class="box-blue" x="220" y="360" width="140" height="210" rx="8" stroke-width="0.5"/>
+<text class="t-blue" x="290" y="386" text-anchor="middle" font-size="14" font-weight="500">U2: 74HCT245</text>
+<text class="ts-blue" x="290" y="404" text-anchor="middle">Addr high A8–A15</text>
+<text class="ts" x="236" y="428" dominant-baseline="central">A8 → B8</text>
+<text class="ts" x="236" y="446" dominant-baseline="central">A9 → B9</text>
+<text class="ts" x="236" y="464" dominant-baseline="central">A10 → B10</text>
+<text class="ts" x="236" y="482" dominant-baseline="central">A11 → B11</text>
+<text class="ts" x="236" y="500" dominant-baseline="central">A12 → B12</text>
+<text class="ts" x="236" y="518" dominant-baseline="central">A13 → B13</text>
+<text class="ts" x="236" y="536" dominant-baseline="central">A14 → B14</text>
+<text class="ts" x="236" y="554" dominant-baseline="central">A15 → B15</text>
+
+<!-- TEENSY 4.1 -->
+<rect class="box-purple" x="440" y="62" width="210" height="600" rx="8" stroke-width="0.5"/>
+<text class="t-purple" x="545" y="86" text-anchor="middle" font-size="14" font-weight="500">Teensy 4.1</text>
+<text class="ts-purple" x="545" y="102" text-anchor="middle">600 MHz, 3.3V GPIO</text>
+
+<text class="ts" x="460" y="192" dominant-baseline="central">pin 2  (A0)</text>
+<text class="ts" x="460" y="210" dominant-baseline="central">pin 3  (A1)</text>
+<text class="ts" x="460" y="228" dominant-baseline="central">pin 4  (A2)</text>
+<text class="ts" x="460" y="246" dominant-baseline="central">pin 5  (A3)</text>
+<text class="ts" x="460" y="264" dominant-baseline="central">pin 6  (A4)</text>
+<text class="ts" x="460" y="282" dominant-baseline="central">pin 7  (A5)</text>
+<text class="ts" x="460" y="300" dominant-baseline="central">pin 8  (A6)</text>
+<text class="ts" x="460" y="318" dominant-baseline="central">pin 9  (A7)</text>
+<text class="ts" x="460" y="428" dominant-baseline="central">pin 10 (A8)</text>
+<text class="ts" x="460" y="446" dominant-baseline="central">pin 11 (A9)</text>
+<text class="ts" x="460" y="464" dominant-baseline="central">pin 12 (A10)</text>
+<text class="ts" x="460" y="482" dominant-baseline="central">pin 24 (A11)</text>
+<text class="ts" x="460" y="500" dominant-baseline="central">pin 25 (A12)</text>
+<text class="ts" x="460" y="518" dominant-baseline="central">pin 26 (A13)</text>
+<text class="ts" x="460" y="536" dominant-baseline="central">pin 27 (A14)</text>
+<text class="ts" x="460" y="554" dominant-baseline="central">pin 28 (A15)</text>
+
+<!-- Wires: DIP → U1 -->
+<line x1="160" y1="312" x2="220" y2="192" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="292" x2="220" y2="210" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="272" x2="220" y2="228" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="252" x2="220" y2="246" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="232" x2="220" y2="264" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="212" x2="220" y2="282" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="192" x2="220" y2="300" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="172" x2="220" y2="318" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+
+<!-- Wires: U1 → Teensy -->
+<line x1="360" y1="192" x2="440" y2="192" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="210" x2="440" y2="210" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="228" x2="440" y2="228" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="246" x2="440" y2="246" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="264" x2="440" y2="264" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="282" x2="440" y2="282" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="300" x2="440" y2="300" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="318" x2="440" y2="318" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+
+<!-- Wires: DIP → U2 -->
+<line x1="160" y1="478" x2="220" y2="428" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="498" x2="220" y2="446" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="558" x2="220" y2="464" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="518" x2="220" y2="482" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="152" x2="220" y2="500" stroke="#5DCAA5" stroke-width="0.8" opacity="0.5"/>
+<line x1="160" y1="458" x2="220" y2="518" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="438" x2="220" y2="536" stroke="#5DCAA5" stroke-width="0.8" opacity="0.7"/>
+<line x1="160" y1="132" x2="220" y2="554" stroke="#5DCAA5" stroke-width="0.8" opacity="0.5"/>
+
+<!-- Wires: U2 → Teensy -->
+<line x1="360" y1="428" x2="440" y2="428" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="446" x2="440" y2="446" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="464" x2="440" y2="464" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="482" x2="440" y2="482" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="500" x2="440" y2="500" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="518" x2="440" y2="518" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="536" x2="440" y2="536" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+<line x1="360" y1="554" x2="440" y2="554" stroke="#85B7EB" stroke-width="0.8" opacity="0.7"/>
+
+<!-- Data bus -->
+<rect class="box-green" x="440" y="340" width="140" height="48" rx="6" stroke-width="0.5"/>
+<text class="t-green" x="510" y="360" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500">D0–D7 direct</text>
+<text class="ts" x="510" y="376" text-anchor="middle" dominant-baseline="central">pins 14–21</text>
+<line x1="160" y1="352" x2="440" y2="364" stroke="#97C459" stroke-width="1.2" opacity="0.6" stroke-dasharray="4 3"/>
+<text class="ts" x="300" y="344">no buffer needed</text>
+
+<!-- /OE -->
+<rect class="box-coral" x="440" y="580" width="140" height="30" rx="6" stroke-width="0.5"/>
+<text class="t-coral" x="510" y="600" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500">/OE → pin 29</text>
+<line x1="160" y1="538" x2="190" y2="595" stroke="#F0997B" stroke-width="0.8" opacity="0.8"/>
+<rect x="190" y="590" width="50" height="10" rx="3" fill="none" stroke="#F0997B" stroke-width="0.8"/>
+<text class="ts" x="215" y="587" text-anchor="middle">R1 1kΩ</text>
+<line x1="240" y1="595" x2="440" y2="595" stroke="#F0997B" stroke-width="0.8" opacity="0.8"/>
+
+<!-- /CE -->
+<rect class="box-coral" x="440" y="618" width="140" height="30" rx="6" stroke-width="0.5"/>
+<text class="t-coral" x="510" y="638" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500">/CE → pin 30</text>
+<line x1="160" y1="578" x2="190" y2="633" stroke="#F0997B" stroke-width="0.8" opacity="0.8"/>
+<rect x="190" y="628" width="50" height="10" rx="3" fill="none" stroke="#F0997B" stroke-width="0.8"/>
+<text class="ts" x="215" y="625" text-anchor="middle">R2 1kΩ</text>
+<line x1="240" y1="633" x2="440" y2="633" stroke="#F0997B" stroke-width="0.8" opacity="0.8"/>
+
+<!-- Power -->
+<rect class="box-amber" x="440" y="120" width="140" height="48" rx="6" stroke-width="0.5"/>
+<text class="t-amber" x="510" y="140" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="500">Vcc → Vin</text>
+<text class="ts-amber" x="510" y="156" text-anchor="middle" dominant-baseline="central">5V from ECU</text>
+<line x1="160" y1="418" x2="440" y2="144" stroke="#EF9F27" stroke-width="1.2" opacity="0.6"/>
+
+<rect class="box-gray" x="440" y="170" width="140" height="18" rx="4" stroke-width="0.5"/>
+<text class="t-gray" x="510" y="183" text-anchor="middle" dominant-baseline="central" font-size="12">GND common</text>
+<line x1="160" y1="392" x2="440" y2="179" stroke="#B4B2A9" stroke-width="1" opacity="0.5"/>
+
+<!-- Legend -->
+<text class="ts" x="40" y="676" dominant-baseline="central">Legend:</text>
+<line x1="100" y1="676" x2="130" y2="676" stroke="#5DCAA5" stroke-width="1.5"/>
+<text class="ts" x="136" y="676" dominant-baseline="central">5V address</text>
+<line x1="230" y1="676" x2="260" y2="676" stroke="#85B7EB" stroke-width="1.5"/>
+<text class="ts" x="266" y="676" dominant-baseline="central">3.3V address</text>
+<line x1="380" y1="676" x2="410" y2="676" stroke="#97C459" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text class="ts" x="416" y="676" dominant-baseline="central">data (direct)</text>
+<line x1="520" y1="676" x2="550" y2="676" stroke="#F0997B" stroke-width="1.5"/>
+<text class="ts" x="556" y="676" dominant-baseline="central">control</text>
+
+<text class="ts" x="200" y="694" dominant-baseline="central">Both 74HCT245: Vcc=3.3V, DIR=GND, /OE=GND — C1, C2, C3: 0.1µF bypass caps on 3.3V rail</text>
+</svg>
