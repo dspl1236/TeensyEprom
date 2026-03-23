@@ -1,4 +1,4 @@
-# TeensyEprom Lite — Build Guide
+# TeensyEprom — Build Guide
 
 > **⚠ Work in Progress — Use at Your Own Risk**
 >
@@ -8,13 +8,14 @@
 ## What It Does
 
 Replaces the 27C256 / 27C512 EPROM in Hitachi MMS ECUs with a Teensy 4.1
-that serves ROM data from SD card. Supports multiple map files and switching
-between them with a button press.
+that serves ROM data from internal flash. Multiple map files can be stored
+and switched with a button press or USB serial command.
 
 **Compatible ECUs:** 893906266D (7A 20v), 893906266B (7A early),
-4A0906266 (AAH V6), 8A0906266A (MMS-200), 8A0906266B (MMS-300).
+4A0906266 (AAH V6), 8A0906266A (MMS-200), 8A0906266B (MMS-300),
+and any ECU using a DIP-28 27C256 or 27C512 with parallel bus.
 
-## BOM — Teensy Lite Only
+## BOM
 
 | Ref | Part | Qty | Notes |
 |-----|------|-----|-------|
@@ -29,10 +30,23 @@ between them with a button press.
 | C3 | 0.1µF ceramic | 1 | Bypass cap — Teensy 3.3V |
 | SW1 | Momentary pushbutton | 1 | Map switch (optional) |
 | — | Breadboard + jumper wires | — | |
-| — | Micro SD card (FAT32) | 1 | ROM files |
+| — | Micro SD card (FAT32) | 1 | Optional — fallback storage |
 | — | Ribbon cable or hookup wire | ~30 | DIP socket → breadboard |
 
 **Total cost:** ~$35 (Teensy) + ~$5 (parts) = **~$40**
+
+## ROM Storage
+
+**Primary: Internal Flash (LittleFS)**
+- ROMs stored on Teensy's 8MB program flash — no SD card needed
+- Upload/manage via USB serial from desktop app
+- Capacity: 16 maps × 32KB = 512KB (1MB partition allocated)
+- No moving parts, no contacts to corrode, survives vibration and heat
+
+**Fallback: SD Card**
+- If internal flash has no maps at boot, checks SD card
+- Useful for initial setup or field recovery
+- Copy .bin files to `maps/` folder on FAT32 SD card
 
 ## Circuit Design
 
@@ -48,8 +62,8 @@ DIP-28 Socket (in ECU)          74HCT245 × 2              Teensy 4.1
  │ /CE    (5V) ───┼── 1kΩ resistor ────────────────────┼── pin 30     │
  │                 │                                    │              │
  │ GND ───────────┼── common ground ───────────────────┼── GND        │
- │ Vcc ───────────┼── 5V (ECU supplies) ──→ not used   │              │
- └────────────────┘    (Teensy uses USB or own supply)  └──────────────┘
+ │ Vcc ───────────┼── 5V ─────────────────────────────→┼── Vin        │
+ └────────────────┘                                     └──────────────┘
 ```
 
 ### Level Shifting
@@ -58,215 +72,141 @@ The Teensy 4.1 is **3.3V only — NOT 5V tolerant**. The ECU bus is 5V TTL.
 
 | Signal | Direction | Method |
 |--------|-----------|--------|
-| Address A0-A15 | ECU → Teensy | 74HCT245 @ 3.3V Vcc (clamps 5V to ~3.8V) |
-| Data D0-D7 | Teensy → ECU | Direct — 3.3V output > 2.0V TTL VIH threshold |
-| /OE, /CE | ECU → Teensy | 1kΩ series resistor (1.7mA clamp, within spec) |
+| A0-A15 | ECU → Teensy | 74HCT245 @ 3.3V Vcc (steps 5V down) |
+| D0-D7 | Teensy → ECU | Direct (3.3V meets TTL VIH > 2.0V) |
+| /OE, /CE | ECU → Teensy | 1kΩ series resistor (clamp via internal diodes) |
 
-### Why No Buffer on Data Bus?
+### Power
 
-The ECU's HD6303 CPU has TTL-level inputs with VIH = 2.0V. Teensy outputs 3.3V,
-which exceeds this threshold. The data bus works without a level shifter.
+```
+DIP-28 pin 28 (Vcc, 5V from ECU) → Teensy Vin
+DIP-28 pin 14 (GND)              → Teensy GND
+```
 
-If you want full 5V output (belt-and-suspenders), add a third 74HCT245 at **5V Vcc**
-with DIR=HIGH (B→A) for the data bus. This is optional.
+Teensy's onboard regulator drops 5V to 3.3V for the MCU and 74HCT245s.
+USB can be connected simultaneously for serial commands.
 
-## Wiring Table
+### 74HCT245 Wiring
 
-### U1 — 74HCT245 #1 (Address Low Byte)
+Both 74HCT245s are wired identically:
+- Vcc = Teensy 3.3V pin
+- GND = common ground
+- DIR = GND (A→B direction, ECU→Teensy)
+- /OE = GND (always enabled)
 
-| U1 Pin | U1 Function | Connects To |
-|--------|-------------|-------------|
-| 1 | DIR | GND (A→B direction) |
-| 2 | A1 (input) | DIP-28 pin 10 (A0) |
-| 3 | A2 (input) | DIP-28 pin 9 (A1) |
-| 4 | A3 (input) | DIP-28 pin 8 (A2) |
-| 5 | A4 (input) | DIP-28 pin 7 (A3) |
-| 6 | A5 (input) | DIP-28 pin 6 (A4) |
-| 7 | A6 (input) | DIP-28 pin 5 (A5) |
-| 8 | A7 (input) | DIP-28 pin 4 (A6) |
-| 9 | A8 (input) | DIP-28 pin 3 (A7) |
-| 10 | GND | GND |
-| 11 | B8 (output) | Teensy pin 9 (A7) |
-| 12 | B7 (output) | Teensy pin 8 (A6) |
-| 13 | B6 (output) | Teensy pin 7 (A5) |
-| 14 | B5 (output) | Teensy pin 6 (A4) |
-| 15 | B4 (output) | Teensy pin 5 (A3) |
-| 16 | B3 (output) | Teensy pin 4 (A2) |
-| 17 | B2 (output) | Teensy pin 3 (A1) |
-| 18 | B1 (output) | Teensy pin 2 (A0) |
-| 19 | /OE | GND (always enabled) |
-| 20 | Vcc | **3.3V** (from Teensy 3.3V pin) |
+**U1 — Address Low Byte:**
 
-### U2 — 74HCT245 #2 (Address High Byte)
+| 245 Pin | Signal | Connects to |
+|---------|--------|-------------|
+| A1-A8 | DIP A0-A7 | ECU address bus (5V) |
+| B1-B8 | → | Teensy pins 2, 3, 4, 5, 6, 7, 8, 9 |
 
-| U2 Pin | U2 Function | Connects To |
-|--------|-------------|-------------|
-| 1 | DIR | GND (A→B direction) |
-| 2 | A1 (input) | DIP-28 pin 25 (A8) |
-| 3 | A2 (input) | DIP-28 pin 24 (A9) |
-| 4 | A3 (input) | DIP-28 pin 21 (A10) |
-| 5 | A4 (input) | DIP-28 pin 23 (A11) |
-| 6 | A5 (input) | DIP-28 pin 2 (A12) |
-| 7 | A6 (input) | DIP-28 pin 26 (A13) |
-| 8 | A7 (input) | DIP-28 pin 27 (A14) |
-| 9 | A8 (input) | DIP-28 pin 1 (A15) |
-| 10 | GND | GND |
-| 11 | B8 (output) | Teensy pin 28 (A15) |
-| 12 | B7 (output) | Teensy pin 27 (A14) |
-| 13 | B6 (output) | Teensy pin 26 (A13) |
-| 14 | B5 (output) | Teensy pin 25 (A12) |
-| 15 | B4 (output) | Teensy pin 24 (A11) |
-| 16 | B3 (output) | Teensy pin 12 (A10) |
-| 17 | B2 (output) | Teensy pin 11 (A9) |
-| 18 | B1 (output) | Teensy pin 10 (A8) |
-| 19 | /OE | GND (always enabled) |
-| 20 | Vcc | **3.3V** (from Teensy 3.3V pin) |
+**U2 — Address High Byte:**
 
-### Data Bus — Direct (No Buffer)
+| 245 Pin | Signal | Connects to |
+|---------|--------|-------------|
+| A1-A8 | DIP A8-A15 | ECU address bus (5V) |
+| B1-B8 | → | Teensy pins 10, 11, 12, 24, 25, 26, 27, 28 |
 
-| DIP-28 Pin | Signal | Teensy Pin |
-|------------|--------|------------|
-| 11 | D0 | 14 |
-| 12 | D1 | 15 |
-| 13 | D2 | 16 |
-| 15 | D3 | 17 |
-| 16 | D4 | 18 |
-| 17 | D5 | 19 |
-| 18 | D6 | 20 |
-| 19 | D7 | 21 |
-
-### Control Signals
-
-| DIP-28 Pin | Signal | Teensy Pin | Notes |
-|------------|--------|------------|-------|
-| 22 | /OE | 29 | Via 1kΩ series resistor |
-| 20 | /CE | 30 | Via 1kΩ series resistor |
-
-### Power and Ground
-
-| DIP-28 Pin | Signal | Connects To |
-|------------|--------|-------------|
-| 14 | GND | Common ground (Teensy GND) |
-| 28 | Vcc | **Teensy Vin** (5V from ECU powers everything) |
-
-> **DIP-28 Pin 28 (Vcc):** The ECU supplies 5V on this pin. Connect directly
-> to Teensy Vin — the onboard regulator drops to 3.3V for the MCU and
-> 74HCT245s. No USB power needed once installed. USB can be connected
-> simultaneously for ROM management (Teensy handles dual power safely).
-
-### Map Switch Button (Optional)
-
-| Component | From | To |
-|-----------|------|----|
-| SW1 terminal 1 | Teensy pin 31 | — |
-| SW1 terminal 2 | GND | — |
-
-Internal pull-up enabled in firmware. Short press = next map. Long press (>1s) = previous map.
-
-## Bypass Capacitors
+### Bypass Caps
 
 Place 0.1µF ceramic caps as close as possible to each IC:
+- C1: U1 Vcc to GND
+- C2: U2 Vcc to GND
+- C3: Teensy 3.3V to GND (near address pin cluster)
 
-| Cap | IC | Vcc Pin | GND Pin |
-|-----|----|---------|---------|
-| C1 | U1 (74HCT245) | Pin 20 | Pin 10 |
-| C2 | U2 (74HCT245) | Pin 20 | Pin 10 |
-| C3 | Teensy | 3.3V | GND |
-
-## ROM Storage
-
-ROMs are stored in the Teensy's internal program flash (LittleFS). No SD card
-required for daily use — flash has no moving parts, no contacts to oxidize,
-and survives engine bay heat and vibration.
-
-**16 slots** available (0–15). Each holds a 32KB or 64KB ROM file.
-32KB files are automatically mirrored to fill 64KB (A15-agnostic).
-
-### Loading ROMs — Desktop App (recommended)
-
-```bash
-pip install pyserial                             # one-time setup
-python app/teensy_eprom.py upload 0 stock.bin    # upload to slot 0
-python app/teensy_eprom.py upload 1 stage1.bin   # upload to slot 1
-python app/teensy_eprom.py upload 2 stage2.bin   # upload to slot 2
-python app/teensy_eprom.py list                  # verify
-python app/teensy_eprom.py switch 1              # activate slot 1
-```
-
-Or run `python app/teensy_eprom.py` for interactive mode.
-
-### Loading ROMs — SD Card Fallback
-
-If the flash is empty at boot and an SD card is inserted, the firmware will
-automatically import `.bin` files from the `maps/` directory into flash slots.
-This is useful for first-time setup or recovery.
+## DIP-28 Pinout (27C256 / 27C512)
 
 ```
-SD (FAT32):
-└── maps/
-    ├── stock.bin       → imported to slot 0
-    ├── stage1.bin      → imported to slot 1
-    └── stage2.bin      → imported to slot 2
+              ┌────U────┐
+       Vpp  1 │         │ 28  Vcc ──→ Teensy Vin
+       A12  2 │         │ 27  /PGM (A14 on 512)
+        A7  3 │         │ 26  A13 (NC on 256)
+        A6  4 │         │ 25  A8
+        A5  5 │         │ 24  A9
+        A4  6 │         │ 23  A11
+        A3  7 │         │ 22  /OE ──→ 1kΩ ──→ Teensy pin 29
+        A2  8 │ 27C512  │ 21  A10
+        A1  9 │         │ 20  /CE ──→ 1kΩ ──→ Teensy pin 30
+        A0 10 │         │ 19  D7
+        D0 11 │         │ 18  D6
+        D1 12 │         │ 17  D5
+        D2 13 │         │ 16  D4
+       GND 14 │         │ 15  D3
+              └─────────┘
 ```
 
-After import, the SD card can be removed. ROMs live in flash permanently
-until overwritten or deleted via USB.
+**Pin 1 (Vpp):** Tie to Vcc (5V) — programming voltage, not needed for reads.
+On 27C512, pin 1 is A15. Teensy serves both halves via mirroring, so A15
+state doesn't matter.
 
-## Firmware Upload
+**Pin 27:** On 27C256 = /PGM (tie HIGH). On 27C512 = A14 (connect to U2).
+
+## Firmware
+
+### Build & Flash
 
 ```bash
 cd firmware
-pio run --target upload
+pio run                      # compile
+pio run --target upload      # flash to Teensy via USB
 ```
 
-Or use Arduino IDE with Teensy 4.1 board selected.
+### Boot Sequence
 
-## USB Serial Commands
+1. Init GPIO, LED off
+2. Mount LittleFS (1MB partition on program flash)
+3. Try mounting SD card (optional)
+4. Scan for .bin files: LittleFS first, SD fallback
+5. Load first map into RAM buffer (32KB, mirrored to 64KB)
+6. Attach /OE interrupt — EPROM emulation active
+7. LED: 3 slow blinks = running
 
-Connect via serial monitor at 115200 baud, or use the desktop app:
+If no maps found: 5 fast blinks, waits for USB upload.
 
-| Command | Description |
-|---------|-------------|
-| `INFO` | Firmware version, active slot, status |
-| `LIST` | List all ROM slots (* = active) |
-| `MAP 2` | Switch to slot 2 |
-| `UPLOAD 0 32768` | Upload 32KB ROM to slot 0 (binary follows) |
-| `DELETE 3` | Erase slot 3 |
-| `DUMP 0 256` | Hex dump 256 bytes from offset 0 |
-| `IMPORT` | Import ROMs from SD card |
-| `FORMAT` | Erase all slots |
+### USB Serial Commands
 
-## LED Status
+Connect at 115200 baud:
 
-| Pattern | Meaning |
-|---------|---------|
-| 3 slow blinks | Boot OK, emulation active |
-| N blinks | Switched to slot N |
-| 10 fast blinks | No ROMs loaded — upload via USB or insert SD |
-| Rapid blink (continuous) | Fatal error (flash init failed) |
+```
+INFO              — firmware version, storage status, active map
+LIST              — show all maps (* = active)
+MAP <n>           — switch to map index n
+DUMP              — hex dump first 256 bytes of active ROM
+UPLOAD name 32768 — upload ROM (followed by raw bytes + CRC16)
+DOWNLOAD <n>      — download map n (sends SIZE + raw bytes + CRC16)
+DELETE <n>        — delete map n from flash
+FORMAT            — delete all maps from flash
+SCAN              — rescan map files
+```
 
-## First Power-On Checklist
+## Desktop App
 
-1. [ ] Verify all wiring against tables above (twice)
-2. [ ] DIP-28 socket NOT installed in ECU yet
-3. [ ] Connect Teensy via USB
-4. [ ] Flash firmware: `cd firmware && pio run --target upload`
-5. [ ] Open serial monitor — confirm "TeensyEprom v2.0"
-6. [ ] Upload a ROM: `python app/teensy_eprom.py upload 0 your_stock.bin`
-7. [ ] Verify: type `DUMP` — should show non-zero data
-8. [ ] Measure voltages: 3.3V on U1/U2 Vcc, GND on DIR and /OE pins
-9. [ ] Install DIP-28 socket in ECU, connect to Teensy
-10. [ ] Connect DIP-28 pin 28 (Vcc) to Teensy Vin, pin 14 (GND) to Teensy GND
-11. [ ] Key on — ECU should boot normally (3 slow blinks)
-12. [ ] If no start: revert to programmed EPROM, check wiring
+```bash
+pip install pyserial
 
-## Troubleshooting
+python app/teensy_eprom.py                     # interactive mode
+python app/teensy_eprom.py info                # device info
+python app/teensy_eprom.py list                # list maps
+python app/teensy_eprom.py upload tune.bin     # upload ROM file
+python app/teensy_eprom.py switch 2            # switch to map 2
+python app/teensy_eprom.py download 0 out.bin  # download map 0
+python app/teensy_eprom.py delete 1            # delete map 1
+python app/teensy_eprom.py --port COM3 info    # specify port
+```
 
-| Symptom | Check |
-|---------|-------|
-| 10 fast blinks | No ROMs in flash — upload via USB or insert SD card |
-| Rapid continuous blink | Flash init failed — re-flash firmware |
-| No serial output | USB cable, Teensy powered? |
-| ECU doesn't boot | Verify /OE and /CE wiring, check data bus connections |
-| ECU boots but runs rough | Wrong ROM file, or address bus wiring error |
-| Works sometimes | Loose breadboard connection, add bypass caps |
+The app auto-detects the Teensy USB serial port. Use `--port` to override.
+
+## Workflow
+
+1. **Build the hardware** — wire up per circuit diagram above
+2. **Flash firmware** — `pio run --target upload`
+3. **Upload your first ROM** — `python app/teensy_eprom.py upload stock.bin`
+4. **Install** — plug DIP-28 socket into ECU where the EPROM was
+5. **Key on** — 3 slow LED blinks = EPROM emulation active
+6. **Upload more maps** — `python app/teensy_eprom.py upload stage2.bin`
+7. **Switch maps** — button press or `python app/teensy_eprom.py switch 1`
+
+No SD card, no chip burner, no socket swapping. Create ROM files with
+[HachiROM](https://github.com/dspl1236/HachiROM) or
+[M35Tool](https://github.com/dspl1236/M35Tool).
