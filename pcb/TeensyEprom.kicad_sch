@@ -12,7 +12,6 @@
     (effects (font (size 1.27 1.27))))
   (global_label "GND" (shape passive) (at 70 20 0) (uuid "31684f86-c9dc-4f2d-bd62-41cd4d60f746")
     (effects (font (size 1.27 1.27))))
-  ;; ──────── J1: DIP-28 EPROM Socket ────────
   (text "DIP-28 EPROM Socket (J1)" (at 60 52 0)
     (effects (font (size 2 2) bold)))
   (text "27C256 / 27C512" (at 60 55 0)
@@ -157,7 +156,6 @@
   (net_label "D3" (at 96 125 0) (uuid "25b7423b-6675-4807-afc1-8379c73cfc84")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 100 125) (xy 96 125)) (uuid "67410137-e39d-498e-8079-9421d60415b6"))
-  ;; ──────── U1: 74HCT245 Addr Low ────────
   (text "U1: 74HCT245 — Addr Low A0–A7" (at 160 52 0)
     (effects (font (size 2 2) bold)))
   (text "U1.1 DIR" (at 158 60 0)
@@ -260,7 +258,6 @@
   (net_label "T9" (at 196 105 0) (uuid "399e3b79-fcfc-4a00-a935-b6494685aca8")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 200 105) (xy 196 105)) (uuid "e36885c9-427c-4817-bf53-22d7db6697c3"))
-  ;; ──────── U2: 74HCT245 Addr High ────────
   (text "U2: 74HCT245 — Addr High A8–A15" (at 160 122 0)
     (effects (font (size 2 2) bold)))
   (text "U2.1 DIR" (at 158 130 0)
@@ -363,7 +360,6 @@
   (net_label "T28" (at 196 175 0) (uuid "310f13ad-db1d-4bc4-ab10-08c706a74c0c")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 200 175) (xy 196 175)) (uuid "d60fe436-c555-481a-b058-08fb76813c3b"))
-  ;; ──────── Teensy 4.1 ────────
   (text "Teensy 4.1 (U0)" (at 280 52 0)
     (effects (font (size 2 2) bold)))
   (text "IMXRT1062, 600 MHz, 3.3V" (at 280 55 0)
@@ -525,7 +521,6 @@
   (net_label "GND" (at 284 199.5 0) (uuid "43779f06-dd0d-4e6d-ab5a-0ddb31ae2f6b")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 280 199.5) (xy 284 199.5)) (uuid "1f37b1cf-af5c-4648-bbc6-acc5dfe21451"))
-  ;; ──────── Control Signal Resistors ────────
   (text "R1: 1kΩ  /OE clamp" (at 280 210 0)
     (effects (font (size 1.5 1.5))))
   (net_label "~{OE}" (at 272 214 0) (uuid "8eeae069-f017-4d4b-93d7-9d9f0fe8f1e6")
@@ -540,7 +535,6 @@
   (net_label "CE_CLK" (at 288 226 0) (uuid "8faacca5-bb5d-4e2b-9008-cc7147e3c92d")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 272 226) (xy 288 226)) (uuid "d821d1c3-9bd4-4326-85e6-a40c7d4a8f38"))
-  ;; ──────── Button ────────
   (text "SW1: Map Switch" (at 280 238 0)
     (effects (font (size 1.5 1.5))))
   (net_label "BTN" (at 272 242 0) (uuid "f731d38d-5f17-4b66-9cd3-7b1f156f7a9b")
@@ -548,7 +542,6 @@
   (net_label "GND" (at 288 242 0) (uuid "5eb2c344-d396-4473-af95-2e0a8fe95128")
     (effects (font (size 1.27 1.27))))
   (wire (pts (xy 272 242) (xy 288 242)) (uuid "89f736c1-a2dd-44b4-a994-3e72a175a4d9"))
-  ;; ──────── Bypass Capacitors ────────
   (text "C1: 100nF U1 bypass" (at 280 260 0)
     (effects (font (size 1.5 1.5))))
   (net_label "+3V3" (at 272 264 0) (uuid "2ce796a5-b3ad-4d60-91dd-fcd5d55b203d")
@@ -567,7 +560,6 @@
     (effects (font (size 1.27 1.27))))
   (net_label "GND" (at 288 284 0) (uuid "e9e013be-0110-4050-af4f-369ff5edc120")
     (effects (font (size 1.27 1.27))))
-  ;; ──────── Net Reference ────────
   (text "NET CROSS-REFERENCE" (at 60 150 0)
     (effects (font (size 2 2) bold)))
   (text "T2–T9 = Teensy pins 2–9 (A0–A7 via U1)" (at 60 154.0 0)
